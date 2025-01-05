@@ -377,7 +377,7 @@ watch(() => user.value, (newUser) => {
 .ranking-content .close-button {
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 10px;
   background: rgba(0, 0, 0, 0.1);
   border: none;
   font-size: 24px;
