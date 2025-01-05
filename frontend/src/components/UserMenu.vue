@@ -4,7 +4,7 @@
       Sign In
     </button>
     <div v-else class="user-info">
-      <span class="user-email">{{ user.email }}</span>
+      <span class="user-email">{{ truncatedEmail }}</span>
       <button @click="$emit('logout')" class="logout-button">
         Sign Out
       </button>
@@ -19,6 +19,13 @@ export default {
     user: {
       type: Object,
       default: null
+    }
+  },
+  computed: {
+    truncatedEmail() {
+      if (!this.user?.email) return '';
+      const [username] = this.user.email.split('@');
+      return username.length > 8 ? username.slice(0, 8) + '...' : username;
     }
   },
   emits: ['login', 'logout']
@@ -55,6 +62,10 @@ export default {
 
 .user-email {
   font-size: 14px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .logout-button {
