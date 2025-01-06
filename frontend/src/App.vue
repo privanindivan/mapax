@@ -331,7 +331,7 @@ watch(() => user.value, (newUser) => {
   left: 80px !important;
   z-index: 1500;
   padding: 4px 8px;
-  background: white;
+  background: rgb(241, 14, 14);
   border: none;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
