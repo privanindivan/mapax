@@ -350,8 +350,8 @@ watch(() => user.value, (newUser) => {
 }
 
 .ranking-button.active {
-  background: #2196F3;
-  color: white;
+  background: #f32133;
+  color: rgb(218, 23, 23);
 }
 
 .ranking-overlay {
