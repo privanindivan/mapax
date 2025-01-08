@@ -7,13 +7,34 @@ const options = {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    storage: window.localStorage,
+    debug: true
+  },
+  db: {
+    schema: 'public'
   },
   global: {
-    headers: {
-      'X-Client-Info': 'supabase-js-web'
-    }
+    headers: { 'x-my-custom-header': 'mapa-application' }
   }
 };
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, options);
+
+// Test auth state changes
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log('Auth event:', event);
+  if (session) {
+    console.log('User session:', session.user);
+  }
+});
+
+// Test database connection
+supabase.from('places').select('count()', { count: 'exact', head: true })
+  .then(({ error }) => {
+    if (error) {
+      console.error('Supabase connection error:', error);
+    } else {
+      console.log('Supabase connection successful');
+    }
+  });
