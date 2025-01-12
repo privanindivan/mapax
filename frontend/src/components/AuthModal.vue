@@ -30,19 +30,18 @@ export default {
       }
     };
 
-    const handleGoogleSignIn = async () => {
-      try {
-        const { data, error } = await auth.signInWithGoogle();
-        if (error) throw error;
-        if (data) {
-          emit('auth-success', data.user);
-          emit('close');
-        }
-      } catch (error) {
-        console.error('Error signing in with Google:', error);
-        alert('Failed to sign in with Google. Please try again.');
-      }
-    };
+   const handleGoogleSignIn = async () => {
+  try {
+    const { data, error } = await auth.signInWithGoogle();
+    if (error) throw error;
+    
+    // No need to emit here as the auth state change will handle it
+    emit('close');
+  } catch (error) {
+    console.error('Error signing in with Google:', error);
+    alert('Failed to sign in with Google. Please try again.');
+  }
+};
 
     return {
       handleGoogleSignIn,
