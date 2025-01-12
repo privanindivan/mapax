@@ -15,30 +15,31 @@ export const auth = {
     }
   },
 
-async signInWithGoogle() {
-  try {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin, // Changed this
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
+  async signInWithGoogle() {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
+      });
+      
+      if (error) {
+        console.error('Google sign in error:', error);
+        return { data: null, error };
       }
-    });
-    
-    if (error) {
-      console.error('Google sign in error:', error);
+      
+      console.log('Sign in successful:', data);
+      return { data, error: null };
+    } catch (error) {
+      console.error('Exception during Google sign in:', error);
       return { data: null, error };
     }
-    
-    return { data, error: null };
-  } catch (error) {
-    console.error('Exception during Google sign in:', error);
-    return { data: null, error };
-  }
-}
+  },
 
   async signOut() {
     try {
@@ -53,7 +54,6 @@ async signInWithGoogle() {
     }
   },
 
-  // Add this to handle the callback
   async handleAuthCallback() {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -63,6 +63,7 @@ async signInWithGoogle() {
         console.log('Auth callback successful:', session);
         return { data: session, error: null };
       }
+      return { data: null, error: null };
     } catch (error) {
       console.error('Auth callback error:', error);
       return { data: null, error };
