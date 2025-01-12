@@ -329,6 +329,8 @@ watch(() => user.value, (newUser) => {
 }
 
 .ranking-button {
+background-color: white !important;
+  color: #333 !important; 
   position: fixed;
   top: 10px;
   left: 60px;  /* Move it right to not overlap with other controls */
@@ -356,9 +358,8 @@ watch(() => user.value, (newUser) => {
 
 /* For the active state */
 .ranking-button.active {
-  background: #f32133 !important;
-  background-color: #f32133 !important;
-  color: white !important;
+   background-color: white !important;
+  color: #333 !important;
 }
 
 .ranking-overlay {
