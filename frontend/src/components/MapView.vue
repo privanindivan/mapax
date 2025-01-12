@@ -145,35 +145,37 @@ export default {
       });
     });
 
-    // Watch markers
-    watch(() => props.markers, (newMarkers) => {
-      if (!map.value || !markerGroup.value) return;
-      markerGroup.value.clearLayers();
-      
-      newMarkers.forEach(marker => {
-        const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
+  watch(() => props.markers, (newMarkers) => {
+  if (!map.value || !markerGroup.value) return;
+  markerGroup.value.clearLayers();
+  
+  newMarkers.forEach(marker => {
+    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
 
-        const markerElement = L.marker([marker.lat, marker.lng], { icon })
-          .addTo(markerGroup.value)
-          .on('click', () => {
-            map.value.setView([marker.lat, marker.lng], 18, {
-              animate: true,
-              duration: 1
-            });
-            emit('marker-click', marker.id);
-          });
-
-        markerElement.bindPopup(`
-          <div class="marker-popup">
-            <h3>${marker.name || 'Unnamed Place'}</h3>
-            <button onclick="document.dispatchEvent(new CustomEvent('showDetails', {detail: '${marker.id}'}))">
+    const markerElement = L.marker([marker.lat, marker.lng], { icon })
+      .addTo(markerGroup.value)
+      .bindPopup(`
+        <div class="marker-popup">
+          <h3>${marker.name || 'Unnamed Place'}</h3>
+          <div class="popup-content">
+            <button class="view-details-btn" 
+              onclick="document.dispatchEvent(new CustomEvent('showDetails', {detail: '${marker.id}'}))">
               View Details
             </button>
           </div>
-        `);
+        </div>
+      `, {
+        closeButton: false,
+        className: 'custom-popup'
       });
-    }, { deep: true });
-
+   markerElement.on('click', () => {
+      map.value.setView([marker.lat, marker.lng], 18, {
+        animate: true,
+        duration: 1
+      });
+    });
+  });
+}, { deep: true });
     const getCurrentLocation = () => {
       if (!map.value) return;
 
@@ -268,6 +270,33 @@ export default {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+:deep(.custom-popup) {
+  min-width: 150px;
+}
+
+:deep(.marker-popup) {
+  text-align: center;
+}
+
+:deep(.marker-popup h3) {
+  margin: 0 0 8px 0;
+  font-weight: bold;
+}
+
+:deep(.view-details-btn) {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+:deep(.view-details-btn:hover) {
+  background: #45a049;
+}
+</style>
 /* Hide Leaflet controls */
 :deep(.leaflet-control-container),
 :deep(.leaflet-control-attribution),
