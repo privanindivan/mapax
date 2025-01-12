@@ -325,14 +325,14 @@ watch(() => user.value, (newUser) => {
   position: relative;
 }
 
-/* Replace the .ranking-button style in your App.vue */
 .ranking-button {
   position: fixed !important;
   top: 10px !important;
   left: 10px !important;
+  right: auto !important;
   z-index: 1500 !important;
   padding: 4px 8px;
-  background-color: rgb(219, 20, 20) !important; /* Explicit RGB red */
+  background-color: rgb(219, 20, 20) !important; /* Ensure this line exists */
   border: none;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -343,16 +343,20 @@ watch(() => user.value, (newUser) => {
   font-size: 12px;
   height: 28px;
   min-width: fit-content;
-  color: white !important;
   margin: 0 !important;
   transform: none !important;
+  white-space: nowrap;
+  color: white !important; /* Ensure text is white */
 }
 
+/* For the hover state */
 .ranking-button:hover {
-  transform: translateY(-2px);
+  background-color: rgb(239, 40, 40) !important;
+  transform: none !important; /* Remove any transform on hover */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
+/* For the active state */
 .ranking-button.active {
   background-color: #f32133 !important;
   color: white !important;
