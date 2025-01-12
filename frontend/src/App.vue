@@ -1,14 +1,12 @@
 <template>
   <div class="app">
-    <!-- Remove or comment out this button -->
-    <!-- 
-    <button 
-      @click="toggleRanking" 
-      :class="['ranking-button', { active: showRanking }]"
-    >
-      ⬆️ Rankings
-    </button> 
-    -->
+  <button 
+  @click="toggleRanking" 
+  :class="['ranking-button', { active: showRanking }]"
+  style="background-color: rgb(219, 20, 20) !important;"
+>
+  ⬆️ Rankings
+</button>
 
     <UserMenu 
       :user="user" 
