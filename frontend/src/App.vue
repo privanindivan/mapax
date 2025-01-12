@@ -264,33 +264,41 @@ export default {
  // In your App.vue setup() function
 onMounted(async () => {
   try {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      user.value = session?.user || null;
+      
+      if (session?.user) {
+        await loadPlaces(); // Reload places when user signs in
+      } else {
+        showAuthModal.value = true;
+        selectedMarker.value = null;
+        markers.value = []; // Clear markers on logout
+        isAddingMode.value = false;
+      }
+    });
+
+    // Initial auth check
     const currentUser = await auth.getUser();
     user.value = currentUser;
     
-    if (!currentUser) {
-      showAuthModal.value = true; // Show auth modal if no user
+    if (currentUser) {
+      await loadPlaces();
+    } else {
+      showAuthModal.value = true;
     }
 
-    await loadPlaces();
-
-    supabase.auth.onAuthStateChange((event, session) => {
-      user.value = session?.user || null;
-      if (!session?.user) {
-        showAuthModal.value = true; // Show auth modal if user signs out
-        selectedMarker.value = null; // Clear selected marker
-      }
+    // Cleanup subscription on unmount
+    onBeforeUnmount(() => {
+      subscription.unsubscribe();
     });
+
   } catch (error) {
     console.error('Setup error:', error);
-    showAuthModal.value = true; // Show auth modal on error
-  }
-});
-// Add a watch for authentication state
-watch(() => user.value, (newUser) => {
-  if (!newUser) {
     showAuthModal.value = true;
   }
 });
+
+// Remove the separate watch as we're handling it in onAuthStateChange
 
     return {
       markers,
