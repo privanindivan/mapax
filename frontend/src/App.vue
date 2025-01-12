@@ -1,11 +1,15 @@
 <template>
   <div class="app">
+    <!-- Remove or comment out this button -->
+    <!-- 
     <button 
       @click="toggleRanking" 
       :class="['ranking-button', { active: showRanking }]"
     >
       ⬆️ Rankings
-    </button>
+    </button> 
+    -->
+
     <UserMenu 
       :user="user" 
       @login="showAuthModal = true"
