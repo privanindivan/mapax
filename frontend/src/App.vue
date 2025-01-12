@@ -327,29 +327,22 @@ watch(() => user.value, (newUser) => {
   position: relative;
 }
 
-.app .ranking-button {
-  position: fixed !important;
-  top: 10px !important;
-  left: 10px !important;
- 
-  z-index: 9999 !important; /* Increased z-index */
-  padding: 4px 8px !important;
-  background: rgb(219, 20, 20) !important;
-  background-color: white !important;
-  border: none !important;
-  border-radius: 4px !important;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
-  cursor: pointer !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 5px !important;
-  font-size: 12px !important;
-  height: 28px !important;
-  min-width: fit-content !important;
-  margin: 0 !important;
-  transform: none !important;
-  color: white !important;
-  white-space: nowrap !important;
+.ranking-button {
+  position: fixed;
+  top: 10px;
+  left: 60px;  /* Move it right to not overlap with other controls */
+  z-index: 1000;
+  padding: 4px 8px;  /* Smaller padding */
+  background: white;
+  border: none;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;  /* Smaller font */
+  transition: all 0.3s ease;
 }
 
 
@@ -361,7 +354,7 @@ watch(() => user.value, (newUser) => {
 }
 
 /* For the active state */
-.app .ranking-button.active {
+.ranking-button.active {
   background: #f32133 !important;
   background-color: #f32133 !important;
   color: white !important;
