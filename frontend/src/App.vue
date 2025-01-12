@@ -330,7 +330,6 @@ watch(() => user.value, (newUser) => {
   position: fixed !important;
   top: 10px !important;
   left: 10px !important; /* Changed from 80px to 10px */
-  right: auto !important;
   z-index: 1500;
   padding: 4px 8px;
   background: rgb(219, 20, 20); /* Fixed RGB syntax */
