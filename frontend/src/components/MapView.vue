@@ -145,7 +145,7 @@ export default {
       });
     });
 
-  watch(() => props.markers, (newMarkers) => {
+ watch(() => props.markers, (newMarkers) => {
   if (!map.value || !markerGroup.value) return;
   markerGroup.value.clearLayers();
   
@@ -156,23 +156,49 @@ export default {
       .addTo(markerGroup.value)
       .bindPopup(`
         <div class="marker-popup">
+          ${marker.images && marker.images.length > 0 ? 
+            `<div class="popup-image">
+               <img src="${marker.images[0]}" alt="${marker.name}" />
+             </div>` : ''
+          }
           <h3>${marker.name || 'Unnamed Place'}</h3>
           <div class="popup-content">
-            <button class="view-details-btn" 
-              onclick="document.dispatchEvent(new CustomEvent('showDetails', {detail: '${marker.id}'}))">
+            <a href="javascript:void(0)" 
+               onclick="(function(){ 
+                 document.dispatchEvent(new CustomEvent('showDetails', {
+                   detail: '${marker.id}'
+                 }));
+               })(); return false;"
+               class="view-details-btn">
               View Details
-            </button>
+            </a>
           </div>
         </div>
       `, {
         closeButton: false,
         className: 'custom-popup'
       });
-   markerElement.on('click', () => {
+
+    // Add click handler for marker
+    markerElement.on('click', () => {
       map.value.setView([marker.lat, marker.lng], 18, {
         animate: true,
         duration: 1
       });
+    });
+
+    // Add click handler specifically for the popup content
+    markerElement.on('popupopen', () => {
+      const popup = markerElement.getPopup();
+      const container = popup.getElement();
+      if (container) {
+        const btn = container.querySelector('.view-details-btn');
+        if (btn) {
+          btn.addEventListener('click', () => {
+            emit('marker-click', marker.id);
+          });
+        }
+      }
     });
   });
 }, { deep: true });
@@ -296,7 +322,38 @@ export default {
 :deep(.view-details-btn:hover) {
   background: #45a049;
 }
+:deep(.view-details-btn) {
+  background: #4CAF50;
+  color: white !important;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  display: inline-block;
+  text-decoration: none;
+  margin-top: 8px;
+  transition: background-color 0.2s ease;
+}
 
+:deep(.view-details-btn:hover) {
+  background: #45a049;
+  text-decoration: none;
+}
+
+:deep(.popup-image) {
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  border-radius: 4px;
+}
+
+:deep(.popup-image img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 /* Hide Leaflet controls - moved inside the style block */
 :deep(.leaflet-control-container),
 :deep(.leaflet-control-attribution),
