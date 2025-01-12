@@ -333,11 +333,11 @@ watch(() => user.value, (newUser) => {
   position: fixed !important;
   top: 10px !important;
   left: 10px !important;
-  right: auto !important;
+ 
   z-index: 9999 !important; /* Increased z-index */
   padding: 4px 8px !important;
   background: rgb(219, 20, 20) !important;
-  background-color: rgb(219, 20, 20) !important;
+  background-color: white !important;
   border: none !important;
   border-radius: 4px !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
