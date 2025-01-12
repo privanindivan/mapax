@@ -296,8 +296,8 @@ export default {
 :deep(.view-details-btn:hover) {
   background: #45a049;
 }
-</style>
-/* Hide Leaflet controls */
+
+/* Hide Leaflet controls - moved inside the style block */
 :deep(.leaflet-control-container),
 :deep(.leaflet-control-attribution),
 :deep(.leaflet-control-container .leaflet-bottom),
