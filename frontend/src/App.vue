@@ -329,10 +329,10 @@ watch(() => user.value, (newUser) => {
 .ranking-button {
   position: fixed !important;
   top: 10px !important;
-  left: 0px !important; /* Changed from 80px to 10px */
-  z-index: 1500;
+  left: 10px !important;
+  z-index: 1500 !important;
   padding: 4px 8px;
-  background: rgb(219, 20, 20); /* Fixed RGB syntax */
+  background-color: rgb(219, 20, 20) !important; /* Explicit RGB red */
   border: none;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -343,6 +343,7 @@ watch(() => user.value, (newUser) => {
   font-size: 12px;
   height: 28px;
   min-width: fit-content;
+  color: white !important;
   margin: 0 !important;
   transform: none !important;
 }
@@ -353,8 +354,8 @@ watch(() => user.value, (newUser) => {
 }
 
 .ranking-button.active {
-  background: #f32133;
-  color: white; /* Changed from rgb(218, 23, 23) for better visibility */
+  background-color: #f32133 !important;
+  color: white !important;
 }
 
 .ranking-overlay {
