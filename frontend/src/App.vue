@@ -32,7 +32,7 @@
       </div>
     </div>
 
-    <!-- Auth Modal -->
+    
     <AuthModal 
       v-if="showAuthModal" 
       @close="showAuthModal = false"
