@@ -329,7 +329,7 @@ watch(() => user.value, (newUser) => {
 .ranking-button {
   position: fixed !important;
   top: 10px !important;
-  left: 10px !important; /* Changed from 80px to 10px */
+  left: 0px !important; /* Changed from 80px to 10px */
   z-index: 1500;
   padding: 4px 8px;
   background: rgb(219, 20, 20); /* Fixed RGB syntax */
