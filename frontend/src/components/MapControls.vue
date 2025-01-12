@@ -33,7 +33,7 @@ export default {
 .map-controls {
   position: absolute;
   bottom: 40px;
-  right: 20px;
+  right: 40px;
   display: flex;
   flex-direction: column;
   gap: 10px;
