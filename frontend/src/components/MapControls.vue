@@ -32,7 +32,7 @@ export default {
 <style scoped>
 .map-controls {
   position: absolute;
-  bottom: 20px;
+  bottom: 40px;
   right: 20px;
   display: flex;
   flex-direction: column;
