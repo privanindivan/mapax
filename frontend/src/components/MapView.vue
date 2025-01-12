@@ -28,47 +28,65 @@ const MARKER_ICONS = {
   office: L.divIcon({
     html: '🏛️',
     className: 'custom-marker',
-    iconSize: [30, 30]
+    iconSize: [30, 30],
+ iconAnchor: [15, 30],   // Add this
+    popupAnchor: [0, -30]  
   }),
   restaurant: L.divIcon({
     html: '🥣',
     className: 'custom-marker',
-    iconSize: [30, 30]
+    iconSize: [30, 30],
+ iconAnchor: [15, 30],   // Add this
+    popupAnchor: [0, -30]  
   }),
   shipping: L.divIcon({
     html: '📦',
     className: 'custom-marker',
-    iconSize: [30, 30]
+    iconSize: [30, 30],
+ iconAnchor: [15, 30],   // Add this
+    popupAnchor: [0, -30]  
   }),
   laundry: L.divIcon({
     html: '👕',
     className: 'custom-marker',
-    iconSize: [30, 30]
+    iconSize: [30, 30],
+ iconAnchor: [15, 30],   // Add this
+    popupAnchor: [0, -30]  
   }),
   church: L.divIcon({
     html: '⛪',
     className: 'custom-marker',
-    iconSize: [30, 30]
+    iconSize: [30, 30],
+ iconAnchor: [15, 30],   // Add this
+    popupAnchor: [0, -30]  
   }),
   school: L.divIcon({
     html: '🏫',
     className: 'custom-marker',
-    iconSize: [30, 30]
+    iconSize: [30, 30],
+ iconAnchor: [15, 30],   // Add this
+    popupAnchor: [0, -30]  
   }),
   store: L.divIcon({
     html: '🏪',
     className: 'custom-marker',
-    iconSize: [30, 30]
+    iconSize: [30, 30],
+ iconAnchor: [15, 30],   // Add this
+    popupAnchor: [0, -30]  
   }),
   barber: L.divIcon({
     html: '✂️',
     className: 'custom-marker',
-    iconSize: [30, 30]
+    iconSize: [30, 30],
+ iconAnchor: [15, 30],   // Add this
+    popupAnchor: [0, -30]  
   }),
   default: L.divIcon({
     html: '📍',
     className: 'custom-marker',
-    iconSize: [30, 30]
+    iconSize: [30, 30],
+ iconAnchor: [15, 30],   // Add this
+    popupAnchor: [0, -30]  
   })
 };
 
@@ -353,6 +371,15 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+:deep(.custom-marker) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  background: none;
+  border: none;
+  text-align: center;
 }
 /* Hide Leaflet controls - moved inside the style block */
 :deep(.leaflet-control-container),
