@@ -24,69 +24,69 @@ const PHILIPPINES_BOUNDS = {
 const GMA_COORDINATES = [14.293054, 121.005381];
 
 const MARKER_ICONS = {
-  office: L.divIcon({
-    html: '<div class="marker-icon">🏛️</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-  }),
-  restaurant: L.divIcon({
-    html: '<div class="marker-icon">🥣</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-  }),
-  shipping: L.divIcon({
-    html: '<div class="marker-icon">📦</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-  }),
-  laundry: L.divIcon({
-    html: '<div class="marker-icon">👕</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-  }),
-  church: L.divIcon({
-    html: '<div class="marker-icon">⛪</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-  }),
-  school: L.divIcon({
-    html: '<div class="marker-icon">🏫</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-  }),
-  store: L.divIcon({
-    html: '<div class="marker-icon">🏪</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-  }),
-  barber: L.divIcon({
-    html: '<div class="marker-icon">✂️</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-  }),
-  default: L.divIcon({
-    html: '<div class="marker-icon">📍</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-  })
+ office: L.divIcon({
+   html: '<div class="marker-icon">🏛️</div>',
+   className: 'custom-marker-wrapper',
+   iconSize: [32, 32],
+   iconAnchor: [16, 32], 
+   popupAnchor: [0, -32]
+ }),
+ restaurant: L.divIcon({
+   html: '<div class="marker-icon">🥣</div>',
+   className: 'custom-marker-wrapper', 
+   iconSize: [32, 32],
+   iconAnchor: [16, 32],
+   popupAnchor: [0, -32]
+ }),
+ shipping: L.divIcon({
+   html: '<div class="marker-icon">📦</div>',
+   className: 'custom-marker-wrapper',
+   iconSize: [32, 32],
+   iconAnchor: [16, 32],
+   popupAnchor: [0, -32]
+ }),
+ laundry: L.divIcon({
+   html: '<div class="marker-icon">👕</div>', 
+   className: 'custom-marker-wrapper',
+   iconSize: [32, 32],
+   iconAnchor: [16, 32],
+   popupAnchor: [0, -32]
+ }),
+ church: L.divIcon({
+   html: '<div class="marker-icon">⛪</div>',
+   className: 'custom-marker-wrapper',
+   iconSize: [32, 32],
+   iconAnchor: [16, 32],
+   popupAnchor: [0, -32]
+ }),
+ school: L.divIcon({
+   html: '<div class="marker-icon">🏫</div>',
+   className: 'custom-marker-wrapper', 
+   iconSize: [32, 32],
+   iconAnchor: [16, 32],
+   popupAnchor: [0, -32]
+ }),
+ store: L.divIcon({
+   html: '<div class="marker-icon">🏪</div>',
+   className: 'custom-marker-wrapper',
+   iconSize: [32, 32],
+   iconAnchor: [16, 32],
+   popupAnchor: [0, -32]
+ }),
+ barber: L.divIcon({
+   html: '<div class="marker-icon">✂️</div>',
+   className: 'custom-marker-wrapper',
+   iconSize: [32, 32],
+   iconAnchor: [16, 32],
+   popupAnchor: [0, -32]
+ }),
+ default: L.divIcon({
+   html: '<div class="marker-icon">📍</div>',
+   className: 'custom-marker-wrapper',
+   iconSize: [32, 32],
+   iconAnchor: [16, 32],
+   popupAnchor: [0, -32]
+ })
 };
 
 export default {
@@ -339,23 +339,22 @@ export default {
 }
 /* Add these new styles while keeping your existing ones */
 :deep(.custom-marker-wrapper) {
+  position: absolute !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 40px !important;
-  height: 40px !important;
+  width: 32px !important;
+  height: 32px !important;
   background: none !important;
   border: none !important;
-  position: relative !important;
+  pointer-events: none !important;
 }
 
 :deep(.marker-icon) {
   font-size: 24px !important;
+  line-height: 1 !important;
+  pointer-events: auto !important;
   filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.3)) !important;
-  position: absolute !important;
-  bottom: 0 !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
 }
 
 /* Modify your existing popup styles */
