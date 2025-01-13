@@ -384,52 +384,54 @@ background-color: white !important;
   align-items: center;
   z-index: 2000;
 }
-
 .ranking-content {
-  background: white !important;
-  width: 80% !important;
-  max-width: 400px !important;
-  margin: 20px auto !important;
-  padding: 20px !important;
-  border-radius: 8px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  background: white;
+  width: 90%;
+  max-width: 400px;
+  margin: 20px auto;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
 }
 
 .ranking-content .close-button {
-  position: absolute !important;
-  top: 10px !important;
-  right: 10px !important;  /* Changed from left to right */
-  background: rgba(255, 0, 0, 0.1) !important;  /* Light red background */
-  color: red !important;  /* Red X */
-  border: none !important;
-  font-size: 24px !important;
-  width: 32px !important;
-  height: 32px !important;
-  border-radius: 50% !important;
-  cursor: pointer !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  transition: all 0.2s ease !important;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  color: #333;
+  font-size: 24px;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
 }
 
 .ranking-content .close-button:hover {
-  background: rgba(255, 0, 0, 0.2) !important;
-  transform: scale(1.1) !important;
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .ranking-list {
   margin-top: 20px;
+  padding-right: 10px;
 }
 
 .ranking-item {
-  display: flex !important;
-  align-items: center !important;
-  padding: 12px !important;
-  background: #f5f5f5 !important;
-  margin-bottom: 8px !important;
-  border-radius: 4px !important;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  background: #f5f5f5;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 .rank-number {
   font-size: 24px !important;
