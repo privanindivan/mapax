@@ -62,7 +62,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted,watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import MapView from './components/MapView.vue';
 import PlaceDetailsDialog from './components/PlaceDetailsDialog.vue';
 import UserMenu from './components/UserMenu.vue';
