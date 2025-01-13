@@ -15,31 +15,27 @@ export const auth = {
     }
   },
 
-  async signInWithGoogle() {
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
+ async signInWithGoogle() {
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin, // Ensure this points to your main site
+        skipBrowserRedirect: false, // Explicitly handle browser redirect
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'select_account' // Changed from 'consent' to always show account picker
         }
-      });
-      
-      if (error) {
-        console.error('Google sign in error:', error);
-        return { data: null, error };
       }
-      
-      console.log('Sign in successful:', data);
-      return { data, error: null };
-    } catch (error) {
-      console.error('Exception during Google sign in:', error);
-      return { data: null, error };
-    }
-  },
+    });
+    
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Exception during Google sign in:', error);
+    return { data: null, error };
+  }
+}
 
   async signOut() {
     try {
