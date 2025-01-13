@@ -35,7 +35,7 @@ export const auth = {
     console.error('Exception during Google sign in:', error);
     return { data: null, error };
   }
-}
+},
 
   async signOut() {
     try {
