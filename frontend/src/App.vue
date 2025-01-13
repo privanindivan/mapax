@@ -268,37 +268,35 @@ isAddingMode.value = false; // Reset add mode
  // In your App.vue setup() function
 onMounted(async () => {
   try {
+    // Check for redirect response first
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      user.value = session.user;
+      await loadPlaces();
+    }
+
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      user.value = session?.user || null;
+      console.log('Auth event:', event);
       
-      if (session?.user) {
-        await loadPlaces(); // Reload places when user signs in
-      } else {
-        showAuthModal.value = true;
+      if (event === 'SIGNED_IN') {
+        user.value = session?.user || null;
+        await loadPlaces();
+        showAuthModal.value = false;
+      } else if (event === 'SIGNED_OUT') {
+        user.value = null;
+        markers.value = [];
         selectedMarker.value = null;
-        markers.value = []; // Clear markers on logout
-        isAddingMode.value = false;
       }
     });
 
-    // Initial auth check
-    const currentUser = await auth.getUser();
-    user.value = currentUser;
-    
-    if (currentUser) {
-      await loadPlaces();
-    } else {
-      showAuthModal.value = true;
-    }
-
-    // Cleanup subscription on unmount
+    // Cleanup on unmount
     onBeforeUnmount(() => {
       subscription.unsubscribe();
     });
 
   } catch (error) {
-    console.error('Setup error:', error);
-    showAuthModal.value = true;
+    console.error('Auth setup error:', error);
   }
 });
 
