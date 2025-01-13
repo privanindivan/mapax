@@ -30,13 +30,27 @@ export default {
       }
     };
 
-   const handleGoogleSignIn = async () => {
+const handleGoogleSignIn = async () => {
   try {
-    const { data, error } = await auth.signInWithGoogle();
-    if (error) throw error;
-    
-    // No need to emit here as the auth state change will handle it
-    emit('close');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+        skipBrowserRedirect: false,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'select_account'
+        }
+      }
+    });
+
+    if (error) {
+      console.error('Google sign in error:', error);
+      alert('Failed to sign in with Google. Please try again.');
+      return;
+    }
+
+    // The redirect will happen automatically
   } catch (error) {
     console.error('Error signing in with Google:', error);
     alert('Failed to sign in with Google. Please try again.');
