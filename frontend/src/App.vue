@@ -3,7 +3,7 @@
   <button 
   @click="toggleRanking" 
   :class="['ranking-button', { active: showRanking }]"
-  style="background-color: rgb(219, 20, 20) !important;"
+
 >
   ⬆️ Rankings
 </button>
@@ -42,6 +42,7 @@
     <MapView
       :markers="markers"
       :is-adding-mode="isAddingMode"
+:is-authenticated="!!user"
       @marker-click="selectMarker"
       @map-click="handleMapClick"
       @toggle-add-mode="toggleAddMode"
@@ -50,10 +51,12 @@
     <PlaceDetailsDialog 
       v-if="selectedMarker" 
       :place="selectedMarker"
+ :can-edit="!!user"
       :can-delete="canDeletePlace"
       @close="closeDialog"
       @update="updatePlace"
       @delete="handleDelete"
+ @request-login="showAuthModal = true" 
     />
   </div>
 </template>
