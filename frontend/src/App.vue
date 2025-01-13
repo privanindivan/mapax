@@ -175,6 +175,7 @@ export default {
     const handleMapClick = async (latlng) => {
   if (!user.value) {
     showAuthModal.value = true;
+isAddingMode.value = false; // Reset add mode
     return;
   }
 
