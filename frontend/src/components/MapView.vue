@@ -25,67 +25,67 @@ const GMA_COORDINATES = [14.293054, 121.005381];
 
 const MARKER_ICONS = {
   office: L.divIcon({
-    html: '🏛️',
-    className: 'custom-marker',
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -30]
+    html: '<div class="marker-icon">🏛️</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   restaurant: L.divIcon({
-    html: '🥣',
-    className: 'custom-marker',
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -30]
+    html: '<div class="marker-icon">🥣</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   shipping: L.divIcon({
-    html: '📦',
-    className: 'custom-marker',
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -30]
+    html: '<div class="marker-icon">📦</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   laundry: L.divIcon({
-    html: '👕',
-    className: 'custom-marker',
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -30]
+    html: '<div class="marker-icon">👕</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   church: L.divIcon({
-    html: '⛪',
-    className: 'custom-marker',
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -30]
+    html: '<div class="marker-icon">⛪</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   school: L.divIcon({
-    html: '🏫',
-    className: 'custom-marker',
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -30]
+    html: '<div class="marker-icon">🏫</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   store: L.divIcon({
-    html: '🏪',
-    className: 'custom-marker',
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -30]
+    html: '<div class="marker-icon">🏪</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   barber: L.divIcon({
-    html: '✂️',
-    className: 'custom-marker',
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -30]
+    html: '<div class="marker-icon">✂️</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   default: L.divIcon({
-    html: '📍',
-    className: 'custom-marker',
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -30]
+    html: '<div class="marker-icon">📍</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   })
 };
 
@@ -337,7 +337,46 @@ export default {
   background: none;
   border: none;
 }
+/* Add these new styles while keeping your existing ones */
+:deep(.custom-marker-wrapper) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 40px !important;
+  height: 40px !important;
+  background: none !important;
+  border: none !important;
+  position: relative !important;
+}
 
+:deep(.marker-icon) {
+  font-size: 24px !important;
+  filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.3)) !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+}
+
+/* Modify your existing popup styles */
+:deep(.custom-popup) {
+  min-width: 150px;
+  margin-bottom: 15px !important; /* Add this */
+}
+
+:deep(.marker-popup) {
+  text-align: center;
+  padding: 5px !important; /* Add this */
+}
+
+:deep(.leaflet-popup-content-wrapper) {
+  border-radius: 8px !important;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.16) !important;
+}
+
+:deep(.leaflet-popup-tip) {
+  box-shadow: 0 3px 6px rgba(0,0,0,0.16) !important;
+}
 /* Hide Leaflet controls */
 :deep(.leaflet-control-container),
 :deep(.leaflet-control-attribution),
