@@ -34,6 +34,7 @@
       ref="mapRef"
       :markers="markers"
       :is-adding-mode="isAddingMode"
+      :is-authenticated="!!user"
       @marker-click="selectMarker"
       @map-click="handleMapClick"
       @toggle-add-mode="toggleAddMode"
@@ -43,62 +44,18 @@
     <PlaceDetailsDialog 
       v-if="selectedMarker" 
       :place="selectedMarker"
+      :can-edit="!!user"
       :can-delete="canDeletePlace"
       @close="closeDialog"
       @update="updatePlace"
       @delete="handleDelete"
+      @request-login="showAuthModal = true"
     />
 
     <AuthModal 
       v-if="showAuthModal" 
       @close="showAuthModal = false"
       @auth-success="handleAuthSuccess"
-    />
-  </div>
-</template>
-
-    <!-- Ranking Modal -->
-    <div v-if="showRanking" class="ranking-overlay">
-      <div class="ranking-content">
-        <button @click="showRanking = false" class="close-button">×</button>
-        <div class="ranking-list">
-          <div v-for="place in sortedPlaces" :key="place.id" class="ranking-item">
-            <span class="rank-number">{{ place.rank }}</span>
-            <div class="rank-details">
-              <h3>{{ place.name }}</h3>
-              <p class="votes">{{ place.votes || 0 }} votes</p>
-            </div>
-            <button @click="selectAndCloseRanking(place.id)" class="view-button">View</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    
-    <AuthModal 
-      v-if="showAuthModal" 
-      @close="showAuthModal = false"
-      @auth-success="handleAuthSuccess"
-    />
-
-    <MapView
-      :markers="markers"
-      :is-adding-mode="isAddingMode"
-:is-authenticated="!!user"
-      @marker-click="selectMarker"
-      @map-click="handleMapClick"
-      @toggle-add-mode="toggleAddMode"
-      @location-error="handleLocationError"
-    />
-    <PlaceDetailsDialog 
-      v-if="selectedMarker" 
-      :place="selectedMarker"
- :can-edit="!!user"
-      :can-delete="canDeletePlace"
-      @close="closeDialog"
-      @update="updatePlace"
-      @delete="handleDelete"
- @request-login="showAuthModal = true" 
     />
   </div>
 </template>
