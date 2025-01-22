@@ -6,11 +6,29 @@
     >
       ⬆️ Rankings
     </button>
+    
     <UserMenu 
       :user="user" 
       @login="showAuthModal = true"
       @logout="handleLogout"
     />
+
+    <!-- Ranking Modal -->
+    <div v-if="showRanking" class="ranking-overlay">
+      <div class="ranking-content">
+        <button @click="showRanking = false" class="close-button">×</button>
+        <div class="ranking-list">
+          <div v-for="place in sortedPlaces" :key="place.id" class="ranking-item">
+            <span class="rank-number">{{ place.rank }}</span>
+            <div class="rank-details">
+              <h3>{{ place.name }}</h3>
+              <p class="votes">{{ place.votes || 0 }} votes</p>
+            </div>
+            <button @click="selectAndCloseRanking(place.id)" class="view-button">View</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <MapView
       ref="mapRef"
