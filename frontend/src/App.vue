@@ -171,9 +171,15 @@ const mapRef = ref(null);
       isAddingMode.value = value;
     };
 
-    const selectMarker = (id) => {
-      selectedMarker.value = markers.value.find((marker) => marker.id === id);
-    };
+   const selectMarker = (id) => {
+  selectedMarker.value = markers.value.find((marker) => marker.id === id);
+  // Center the map on the selected marker
+  if (selectedMarker.value) {
+    mapRef.value?.setView([selectedMarker.value.lat, selectedMarker.value.lng], 18, {
+      animate: true,
+      duration: 1
+    });
+  
 
     const handleMapClick = async (latlng) => {
   if (!user.value) {
