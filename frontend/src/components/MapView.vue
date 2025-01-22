@@ -16,6 +16,16 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MapControls from './MapControls.vue';
 
+export const PLACE_TYPES = [
+  { value: 'office', label: '🏛️ Office' },
+  { value: 'building', label: '🏢 Building' },
+  { value: 'restaurant', label: '🥣 Restaurant' },
+  { value: 'shipping', label: '📦 Shipping' },
+  { value: 'laundry', label: '👕 Laundry' },
+  { value: 'church', label: '⛪ Church' },
+  { value: 'store', label: '🏪 Store' },
+  { value: 'barber', label: '✂️ Barber' }
+];
 const PHILIPPINES_BOUNDS = {
   southwest: [4.566667, 116.7],
   northeast: [21.120556, 126.537778]
@@ -162,37 +172,54 @@ export default {
       newMarkers.forEach(marker => {
         const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
 
-        const markerElement = L.marker([marker.lat, marker.lng], { icon })
-          .addTo(markerGroup.value)
-          .bindPopup(`
-            <div class="marker-popup">
-              ${marker.images && marker.images.length > 0 ? 
-                `<div class="popup-image">
-                   <img src="${marker.images[0]}" alt="${marker.name}" />
-                 </div>` : ''
-              }
-              <h3>${marker.name || 'Unnamed Place'}</h3>
-              <div class="popup-content">
-                <button class="view-details-btn" 
-                  onclick="document.dispatchEvent(new CustomEvent('showDetails', {detail: '${marker.id}'}))">
-                  View Details
-                </button>
-              </div>
-            </div>
-          `, {
-            closeButton: false,
-            className: 'custom-popup'
-          });
+     watch(() => props.markers, (newMarkers) => {
+  if (!map.value || !markerGroup.value) return;
+  markerGroup.value.clearLayers();
+  
+  newMarkers.forEach(marker => {
+    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
 
-        markerElement.on('click', () => {
-          map.value.setView([marker.lat, marker.lng], 18, {
-            animate: true,
-            duration: 1
-          });
-        });
+    const markerElement = L.marker([marker.lat, marker.lng], { icon })
+      .addTo(markerGroup.value)
+      .bindPopup(`
+        <div class="marker-popup">
+          ${marker.images && marker.images.length > 0 ? 
+            `<div class="popup-image">
+               <img src="${marker.images[0]}" alt="${marker.name}" />
+             </div>` : ''
+          }
+          <h3>${marker.name || 'Unnamed Place'}</h3>
+          <div class="popup-content">
+            <button class="view-details-btn" data-marker-id="${marker.id}">
+              View Details
+            </button>
+          </div>
+        </div>
+      `, {
+        closeButton: false,
+        className: 'custom-popup'
       });
-    }, { deep: true });
 
+    // Add popup open handler
+    markerElement.on('popupopen', (e) => {
+      const button = e.popup.getElement().querySelector('.view-details-btn');
+      if (button) {
+        button.addEventListener('click', () => {
+          emit('marker-click', marker.id);
+          markerElement.closePopup();
+        });
+      }
+    });
+
+    // Center map on marker click
+    markerElement.on('click', () => {
+      map.value.setView([marker.lat, marker.lng], 18, {
+        animate: true,
+        duration: 1
+      });
+    });
+  });
+}, { deep: true });
     const getCurrentLocation = () => {
       if (!map.value) return;
 
@@ -242,11 +269,13 @@ export default {
         map.value.remove();
       }
     });
-
-    return {
-      getCurrentLocation,
-      toggleAddMode
-    };
+return {
+  getCurrentLocation,
+  toggleAddMode,  // Add comma here
+  setView(latlng, zoom) {
+    if (map.value) {
+      map.value.setView(latlng, zoom);
+    }
   }
 };
 </script>
