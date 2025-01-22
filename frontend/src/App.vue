@@ -343,7 +343,7 @@ background-color: white !important;
   color: #333 !important; 
   position: fixed;
   top: 10px;
-  left: 60px;  /* Move it right to not overlap with other controls */
+  left: 10px;  /* Move it right to not overlap with other controls */
   z-index: 1000;
   padding: 4px 8px;  /* Smaller padding */
   background: white;
@@ -354,7 +354,7 @@ background-color: white !important;
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 14px;  /* Smaller font */
+  font-size: 10px;  /* Smaller font */
   transition: all 0.3s ease;
 }
 
