@@ -83,39 +83,26 @@
         </button>
       </div>
 
-   <!-- Details Tab Content -->
-<div v-if="activeTab === 'details'" class="tab-content">
-  <div class="description-section">
-    <!-- Add Type Selector -->
-    <div v-if="isEditing" class="type-selector">
-      <label>Place Type:</label>
-      <select v-model="editedPlace.type" class="type-select">
-        <option v-for="type in PLACE_TYPES" 
-                :key="type.value" 
-                :value="type.value"
-        >
-          {{ type.label }}
-        </option>
-      </select>
-    </div>
-    
-    <textarea
-      v-if="isEditing"
-      v-model="editedPlace.description"
-      class="description-input"
-      rows="4"
-      placeholder="Add description here..."
-    ></textarea>
-    <p v-else class="description-text">{{ place?.description || 'Add description here...' }}</p>
-    <button @click="toggleEdit" class="edit-button">
-      {{ isEditing ? 'Save' : 'Edit' }}
-    </button>
-  </div>
+      <!-- Details Tab Content -->
+      <div v-if="activeTab === 'details'" class="tab-content">
+        <div class="description-section">
+          <textarea
+            v-if="isEditing"
+            v-model="editedPlace.description"
+            class="description-input"
+            rows="4"
+            placeholder="Add description here..."
+          ></textarea>
+          <p v-else class="description-text">{{ place?.description || 'Add description here...' }}</p>
+          <button @click="toggleEdit" class="edit-button">
+            {{ isEditing ? 'Save' : 'Edit' }}
+          </button>
+        </div>
 
-  <div class="metadata-section">
-    <p class="last-edited">{{ formatDate(place?.lastEdited) }}</p>
-  </div>
-</div>
+        <div class="metadata-section">
+          <p class="last-edited">{{ formatDate(place?.lastEdited) }}</p>
+        </div>
+      </div>
 
       <!-- Comments Tab Content -->
       <div v-if="activeTab === 'comments'" class="tab-content">
@@ -150,7 +137,6 @@
 <script>
 import { ref, reactive, watch,computed } from 'vue';
 import { supabase } from '../services/supabase';
-import { PLACE_TYPES } from './MapView.vue';  
 export default {
   name: 'PlaceDetailsDialog',
   props: {
@@ -168,6 +154,7 @@ export default {
     const editedPlace = reactive({ ...props.place });
     const user = ref(null);
     const fullscreenImage = ref(null);
+
 
     watch(() => props.place, (newPlace) => {
       Object.assign(editedPlace, newPlace);
@@ -605,24 +592,5 @@ export default {
   margin-top: 5px;
   font-size: 12px;
   color: #666;
-}
-.type-selector {
-  margin-bottom: 15px;
-}
-
-.type-select {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  margin-top: 5px;
-}
-
-label {
-  display: block;
-  margin-bottom: 5px;
-  color: #666;
-  font-size: 14px;
 }
 </style>
