@@ -159,11 +159,14 @@ export default {
       showRanking.value = !showRanking.value;
     };
 
-    const selectAndCloseRanking = (id) => {
-      selectMarker(id);
-      showRanking.value = false;
-    };
-
+   const selectAndCloseRanking = (id) => {
+  const marker = markers.value.find(m => m.id === id);
+  if (marker) {
+    map.value.setView([marker.lat, marker.lng], 18);
+  }
+  selectMarker(id);
+  showRanking.value = false;
+};
     const toggleAddMode = (value) => {
       isAddingMode.value = value;
     };
