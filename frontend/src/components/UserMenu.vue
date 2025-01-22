@@ -39,7 +39,7 @@ export default {
 
 .login-button,
 .logout-button {
-  padding: 8px 16px;
+  padding: 4px 8px;
   background: white;
   border: none;
   border-radius: 4px;
