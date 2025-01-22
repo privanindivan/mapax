@@ -65,8 +65,6 @@ export default {
   white-space: nowrap;
 }
 
-.logout-button {
-  background: #ff4081;
-  color: white;
+
 }
 </style>
