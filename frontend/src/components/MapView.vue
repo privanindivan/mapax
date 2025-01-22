@@ -60,7 +60,7 @@ const MARKER_ICONS = {
    popupAnchor: [0, -32]
  }),
  school: L.divIcon({
-   html: '<div class="marker-icon">🏫</div>',
+   html: '<div class="marker-icon">🏢</div>',
    className: 'custom-marker-wrapper', 
    iconSize: [32, 32],
    iconAnchor: [16, 32],
