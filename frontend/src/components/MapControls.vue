@@ -1,7 +1,7 @@
 <template>
   <div class="map-controls">
     <button @click="$emit('get-location')" class="control-button location-button">
-      <span class="button-icon">📍</span>
+      <span class="button-icon">🟢</span>
     </button>
     <button 
       @click="$emit('toggle-add-mode')"
