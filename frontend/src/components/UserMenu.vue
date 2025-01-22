@@ -1,14 +1,11 @@
 <template>
   <div class="user-menu">
     <button v-if="!user" @click="$emit('login')" class="login-button">
-      Sign In
+      Log In
     </button>
-    <div v-else class="user-info">
-      <span class="user-email">{{ truncatedEmail }}</span>
-      <button @click="$emit('logout')" class="logout-button">
-        Sign Out
-      </button>
-    </div>
+    <button v-else @click="$emit('logout')" class="user-icon-button">
+      Log Out
+    </button>
   </div>
 </template>
 
