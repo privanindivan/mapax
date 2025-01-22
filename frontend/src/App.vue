@@ -13,7 +13,42 @@
       @login="showAuthModal = true"
       @logout="handleLogout"
     />
-   
+   <template>
+  <div class="app">
+    <button 
+      @click="toggleRanking" 
+      :class="['ranking-button', { active: showRanking }]"
+    >
+      ⬆️ Rankings
+    </button>
+    <UserMenu 
+      :user="user" 
+      @login="showAuthModal = true"
+      @logout="handleLogout"
+    />
+
+    <!-- This is where you add the ref="mapRef" -->
+    <MapView
+      ref="mapRef"  <!-- Add this line -->
+      :markers="markers"
+      :is-adding-mode="isAddingMode"
+      @marker-click="selectMarker"
+      @map-click="handleMapClick"
+      @toggle-add-mode="toggleAddMode"
+      @location-error="handleLocationError"
+    />
+    
+    <!-- Rest of your template -->
+    <PlaceDetailsDialog 
+      v-if="selectedMarker" 
+      :place="selectedMarker"
+      :can-delete="canDeletePlace"
+      @close="closeDialog"
+      @update="updatePlace"
+      @delete="handleDelete"
+    />
+  </div>
+</template>
 
     <!-- Ranking Modal -->
     <div v-if="showRanking" class="ranking-overlay">
@@ -86,6 +121,7 @@ export default {
     const showRanking = ref(false);
     const user = ref(null);
     const showAuthModal = ref(false);
+const mapRef = ref(null);
 
     // Computed properties
     const sortedPlaces = computed(() => {
@@ -159,14 +195,14 @@ export default {
       showRanking.value = !showRanking.value;
     };
 
-   const selectAndCloseRanking = (id) => {
-  const marker = markers.value.find(m => m.id === id);
-  if (marker) {
-    map.value.setView([marker.lat, marker.lng], 18);
-  }
-  selectMarker(id);
-  showRanking.value = false;
-};
+ const selectAndCloseRanking = (id) => {
+    const marker = markers.value.find(m => m.id === id);
+    if (marker && mapRef.value) {
+      mapRef.value.setView([marker.lat, marker.lng], 18);
+    }
+    selectMarker(id);
+    showRanking.value = false;
+  };
     const toggleAddMode = (value) => {
       isAddingMode.value = value;
     };
@@ -324,7 +360,8 @@ onMounted(async () => {
       updatePlace,
       handleLocationError,
       closeDialog: () => selectedMarker.value = null,
-      handleDelete
+      handleDelete,
+ mapRef,
     };
   }
 };
