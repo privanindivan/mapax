@@ -30,6 +30,12 @@
       @update="updatePlace"
       @delete="handleDelete"
     />
+
+    <AuthModal 
+      v-if="showAuthModal" 
+      @close="showAuthModal = false"
+      @auth-success="handleAuthSuccess"
+    />
   </div>
 </template>
 
