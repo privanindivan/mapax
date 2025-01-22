@@ -283,7 +283,7 @@ export default {
   transform: translateX(-50%);
   z-index: 1000;
   margin: 0;
-  padding: 10px 20px;
+  padding: 5px 10px;
   background: rgba(255, 255, 255, 0.9);
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
