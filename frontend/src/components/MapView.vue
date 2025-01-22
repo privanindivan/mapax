@@ -139,22 +139,20 @@ export default {
       markerGroup.value = L.layerGroup().addTo(map.value);
       document.addEventListener('showDetails', handleShowDetails);
 
-      map.value.on('click', (e) => {
-        if (props.isAddingMode) {
-          emit('map-click', e.latlng);
-          if (tempMarker.value) {
-            markerGroup.value.removeLayer(tempMarker.value);
-          }
-          tempMarker.value = L.circleMarker(e.latlng, {
-            radius: 8,
-            fillColor: '#FF4081',
-            color: '#fff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.8
-          }).addTo(markerGroup.value);
-        }
-      });
+  map.value.on('click', (e) => {
+  if (props.isAddingMode) {
+    if (confirm('Are you sure you want to add a place here?')) {
+      if (tempMarker.value) {
+        markerGroup.value.removeLayer(tempMarker.value);
+      }
+      tempMarker.value = L.marker(e.latlng, {
+        icon: MARKER_ICONS.default
+      }).addTo(markerGroup.value);
+      
+      emit('map-click', e.latlng);
+    }
+  }
+});
     });
 
     watch(() => props.markers, (newMarkers) => {
