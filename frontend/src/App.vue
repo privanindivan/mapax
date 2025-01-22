@@ -69,7 +69,6 @@ import AuthModal from './components/AuthModal.vue';
 import { supabase } from './services/supabase';
 import { auth } from './services/auth';
 
-
 export default {
   name: 'App',
   components: {
@@ -85,7 +84,7 @@ export default {
     const showRanking = ref(false);
     const user = ref(null);
     const showAuthModal = ref(false);
-const mapRef = ref(null);
+    const mapRef = ref(null);
 
     // Computed properties
     const sortedPlaces = computed(() => {
@@ -104,44 +103,44 @@ const mapRef = ref(null);
 
     // Methods
     const loadPlaces = async () => {
-  try {
-    console.log('Loading places...');
-    const response = await supabase
-      .from('places')
-      .select('*')
-      .order('created_at', { ascending: false });
+      try {
+        console.log('Loading places...');
+        const response = await supabase
+          .from('places')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-    if (response.error) {
-      console.error('Supabase error:', response.error);
-      throw response.error;
-    }
+        if (response.error) {
+          console.error('Supabase error:', response.error);
+          throw response.error;
+        }
 
-    if (!response.data) {
-      console.log('No places found');
-      markers.value = [];
-      return;
-    }
+        if (!response.data) {
+          console.log('No places found');
+          markers.value = [];
+          return;
+        }
 
-    console.log('Places loaded:', response.data);
-    markers.value = response.data.map(place => ({
-      id: place.id,
-      lat: place.latitude || 0,
-      lng: place.longitude || 0,
-      name: place.name || 'Unnamed Place',
-      description: place.description || '',
-      votes: place.votes || 0,
-      images: place.images || [],
-      comments: place.comments || [],
-      hasVoted: place.has_voted || false,
-      lastEdited: place.last_edited || new Date().toISOString(),
-      type: place.type || 'default',
-      user_id: place.user_id
-    }));
-  } catch (error) {
-    console.error('LoadPlaces error:', error);
-    markers.value = [];
-  }
-};
+        console.log('Places loaded:', response.data);
+        markers.value = response.data.map(place => ({
+          id: place.id,
+          lat: place.latitude || 0,
+          lng: place.longitude || 0,
+          name: place.name || 'Unnamed Place',
+          description: place.description || '',
+          votes: place.votes || 0,
+          images: place.images || [],
+          comments: place.comments || [],
+          hasVoted: place.has_voted || false,
+          lastEdited: place.last_edited || new Date().toISOString(),
+          type: place.type || 'default',
+          user_id: place.user_id
+        }));
+      } catch (error) {
+        console.error('LoadPlaces error:', error);
+        markers.value = [];
+      }
+    };
 
     const handleAuthSuccess = (userData) => {
       user.value = userData;
@@ -159,79 +158,81 @@ const mapRef = ref(null);
       showRanking.value = !showRanking.value;
     };
 
- const selectAndCloseRanking = (id) => {
-    const marker = markers.value.find(m => m.id === id);
-    if (marker && mapRef.value) {
-      mapRef.value.setView([marker.lat, marker.lng], 18);
-    }
-    selectMarker(id);
-    showRanking.value = false;
-  };
+    const selectAndCloseRanking = (id) => {
+      const marker = markers.value.find(m => m.id === id);
+      if (marker && mapRef.value) {
+        mapRef.value.setView([marker.lat, marker.lng], 18);
+      }
+      selectMarker(id);
+      showRanking.value = false;
+    };
+
     const toggleAddMode = (value) => {
       isAddingMode.value = value;
     };
 
-   const selectMarker = (id) => {
-  selectedMarker.value = markers.value.find((marker) => marker.id === id);
-  // Center the map on the selected marker
-  if (selectedMarker.value) {
-    mapRef.value?.setView([selectedMarker.value.lat, selectedMarker.value.lng], 18, {
-      animate: true,
-      duration: 1
-    });
-  
+    const selectMarker = (id) => {
+      selectedMarker.value = markers.value.find((marker) => marker.id === id);
+      if (selectedMarker.value) {
+        mapRef.value?.setView([selectedMarker.value.lat, selectedMarker.value.lng], 18, {
+          animate: true,
+          duration: 1
+        });
+      }
+    };
 
     const handleMapClick = async (latlng) => {
-  if (!user.value) {
-    showAuthModal.value = true;
-isAddingMode.value = false; // Reset add mode
-    return;
-  }
-
-  if (isAddingMode.value) {
-    try {
-      console.log('Adding place at:', latlng);
-      
-      const newPlace = {
-        name: 'New Place',
-        latitude: latlng.lat,
-        longitude: latlng.lng,
-        description: 'Add description here...',
-        user_id: user.value.id,
-        votes: 0
-      };
-
-      const { data, error } = await supabase
-        .from('places')
-        .insert([newPlace])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+      if (!user.value) {
+        showAuthModal.value = true;
+        isAddingMode.value = false;
+        return;
       }
 
-      const newMarker = {
-        id: data.id,
-        lat: data.latitude,
-        lng: data.longitude,
-        name: data.name,
-        description: data.description,
-        votes: data.votes || 0,
-        user_id: data.user_id
-      };
-      
-      markers.value.push(newMarker);
-      selectedMarker.value = newMarker;
-      isAddingMode.value = false;
+      if (isAddingMode.value) {
+        try {
+          console.log('Adding place at:', latlng);
+          
+          const newPlace = {
+            name: 'New Place',
+            latitude: latlng.lat,
+            longitude: latlng.lng,
+            description: 'Add description here...',
+            user_id: user.value.id,
+            votes: 0
+          };
 
-    } catch (error) {
-      console.error('Error details:', error);
-      alert('Failed to add place. Please try again.');
-    }
-  }
-};
+          const { data, error } = await supabase
+            .from('places')
+            .insert([newPlace])
+            .select()
+            .single();
+
+          if (error) {
+            console.error('Supabase error:', error);
+            throw error;
+          }
+
+          const newMarker = {
+            id: data.id,
+            lat: data.latitude,
+            lng: data.longitude,
+            name: data.name,
+            description: data.description,
+            votes: data.votes || 0,
+            user_id: data.user_id
+          };
+          
+          markers.value.push(newMarker);
+          selectedMarker.value = newMarker;
+          isAddingMode.value = false;
+
+        } catch (error) {
+          console.error('Error details:', error);
+          alert('Failed to add place. Please try again.');
+        }
+      }
+    };
+
     const updatePlace = async (updatedPlace) => {
       try {
         const { error } = await supabase
@@ -273,43 +274,36 @@ isAddingMode.value = false; // Reset add mode
       selectedMarker.value = null;
     };
 
-    // Initialize
- // In your App.vue setup() function
-onMounted(async () => {
-  try {
-    // Check for redirect response first
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      user.value = session.user;
-      await loadPlaces();
-    }
+    onMounted(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          user.value = session.user;
+          await loadPlaces();
+        }
 
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event);
-      
-      if (event === 'SIGNED_IN') {
-        user.value = session?.user || null;
-        await loadPlaces();
-        showAuthModal.value = false;
-      } else if (event === 'SIGNED_OUT') {
-        user.value = null;
-        markers.value = [];
-        selectedMarker.value = null;
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log('Auth event:', event);
+          
+          if (event === 'SIGNED_IN') {
+            user.value = session?.user || null;
+            await loadPlaces();
+            showAuthModal.value = false;
+          } else if (event === 'SIGNED_OUT') {
+            user.value = null;
+            markers.value = [];
+            selectedMarker.value = null;
+          }
+        });
+
+        onBeforeUnmount(() => {
+          subscription.unsubscribe();
+        });
+
+      } catch (error) {
+        console.error('Auth setup error:', error);
       }
     });
-
-    // Cleanup on unmount
-    onBeforeUnmount(() => {
-      subscription.unsubscribe();
-    });
-
-  } catch (error) {
-    console.error('Auth setup error:', error);
-  }
-});
-
-// Remove the separate watch as we're handling it in onAuthStateChange
 
     return {
       markers,
@@ -331,7 +325,7 @@ onMounted(async () => {
       handleLocationError,
       closeDialog: () => selectedMarker.value = null,
       handleDelete,
- mapRef,
+      mapRef,
     };
   }
 };
@@ -349,13 +343,13 @@ onMounted(async () => {
 }
 
 .ranking-button {
-background-color: white !important;
+  background-color: white !important;
   color: #333 !important; 
   position: fixed;
   top: 10px;
-  left: 10px;  /* Move it right to not overlap with other controls */
+  left: 10px;
   z-index: 1000;
-  padding: 4px 8px;  /* Smaller padding */
+  padding: 4px 8px;
   background: white;
   border: none;
   border-radius: 4px;
@@ -364,21 +358,18 @@ background-color: white !important;
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;  /* Smaller font */
+  font-size: 10px;
   transition: all 0.3s ease;
 }
 
-
-/* For the hover state */
 .ranking-button:hover {
   background-color: rgb(239, 40, 40) !important;
-  transform: none !important; /* Remove any transform on hover */
+  transform: none !important;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* For the active state */
 .ranking-button.active {
-   background-color: white !important;
+  background-color: white !important;
   color: #333 !important;
 }
 
@@ -394,6 +385,7 @@ background-color: white !important;
   align-items: center;
   z-index: 2000;
 }
+
 .ranking-content {
   background: white;
   width: 90%;
@@ -443,6 +435,7 @@ background-color: white !important;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
+
 .rank-number {
   font-size: 24px !important;
   font-weight: bold !important;
@@ -480,11 +473,13 @@ background-color: white !important;
   text-transform: uppercase !important;
   font-size: 14px !important;
 }
+
 .view-button:hover {
   background: #45a049 !important;
   transform: translateY(-1px) !important;
 }
-user-menu {
+
+.user-menu {
   margin-right: 10px;
 }
 </style>
