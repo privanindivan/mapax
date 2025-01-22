@@ -1,20 +1,5 @@
 <template>
   <div class="app">
-  <button 
-  @click="toggleRanking" 
-  :class="['ranking-button', { active: showRanking }]"
-
->
-  ⬆️ Rankings
-</button>
-
-    <UserMenu 
-      :user="user" 
-      @login="showAuthModal = true"
-      @logout="handleLogout"
-    />
-   <template>
-  <div class="app">
     <button 
       @click="toggleRanking" 
       :class="['ranking-button', { active: showRanking }]"
@@ -27,9 +12,8 @@
       @logout="handleLogout"
     />
 
-    <!-- This is where you add the ref="mapRef" -->
     <MapView
-      ref="mapRef"  <!-- Add this line -->
+      ref="mapRef"
       :markers="markers"
       :is-adding-mode="isAddingMode"
       @marker-click="selectMarker"
@@ -37,8 +21,7 @@
       @toggle-add-mode="toggleAddMode"
       @location-error="handleLocationError"
     />
-    
-    <!-- Rest of your template -->
+
     <PlaceDetailsDialog 
       v-if="selectedMarker" 
       :place="selectedMarker"
