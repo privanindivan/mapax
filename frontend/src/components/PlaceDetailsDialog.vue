@@ -256,94 +256,97 @@ export default {
       isEditing.value = !isEditing.value;
     };
 
-    const handleVote = async (direction) => {
-      try {
-        const voteChange = direction === 'up' ? 1 : -1;
-        const newVotes = editedPlace.votes + voteChange;
-        
-        const { error } = await supabase
-          .from('places')
-          .update({ 
-            votes: newVotes,
-            has_voted: true 
-          })
-          .eq('id', editedPlace.id);
+  // Inside PlaceDetailsDialog.vue setup()
 
-        if (error) throw error;
-        
-        editedPlace.votes = newVotes;
-        editedPlace.hasVoted = true;
-        hasVoted.value = direction;
-        emit('update', editedPlace);
-      } catch (error) {
-        console.error('Voting error:', error);
-        alert('Voting failed');
-      }
-    };
+const handleVote = async (direction) => {
+  if (!user.value) {
+    emit('request-login');
+    return;
+  }
 
-    const handleDelete = async () => {
-      if (!confirm('Permanently delete this place?')) return;
-      
-      try {
-        const { error } = await supabase
-          .from('places')
-          .delete()
-          .eq('id', editedPlace.id);
+  try {
+    const voteValue = direction === 'up' ? 1 : -1;
+    
+    const { data, error } = await supabase
+      .from('places')
+      .update({ 
+        votes: editedPlace.votes + voteValue,
+        voted_users: [...(editedPlace.voted_users || []), user.value.id]
+      })
+      .eq('id', editedPlace.id)
+      .select()
+      .single();
 
-        if (error) throw error;
-        emit('delete', editedPlace.id);
-        closeDialog();
-      } catch (error) {
-        console.error('Delete error:', error);
-        alert('Deletion failed');
-      }
-    };
+    if (error) throw error;
+    
+    editedPlace.votes = data.votes;
+    editedPlace.voted_users = data.voted_users;
+    hasVoted.value = direction;
+    emit('update', editedPlace);
+  } catch (error) {
+    console.error('Voting error:', error);
+    alert('Failed to vote');
+  }
+};
 
-    const handleImageUpload = (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
+const handleDelete = async () => {
+  if (!confirm('Are you sure you want to delete this place?')) return;
+  
+  try {
+    const { error } = await supabase
+      .from('places')
+      .delete()
+      .eq('id', editedPlace.id)
+      .eq('user_id', user.value.id); // Ensure only owner can delete
 
+    if (error) throw error;
+    
+    emit('delete', editedPlace.id);
+    emit('close');
+  } catch (error) {
+    console.error('Delete error:', error);
+    alert('Failed to delete place');
+  }
+};
+
+// Add image handling
+const handleImageUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  // Check file size and type
+  if (file.size > 5000000) { // 5MB limit
+    alert('Image too large. Maximum size is 5MB.');
+    return;
+  }
+
+  try {
+    // Convert to base64
+    const base64 = await new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        editedPlace.images = [...editedPlace.images, e.target.result];
-        emit('update', editedPlace);
-      };
+      reader.onload = (e) => resolve(e.target.result);
       reader.readAsDataURL(file);
-    };
+    });
 
-    const removeImage = (index) => {
-      editedPlace.images.splice(index, 1);
-      emit('update', editedPlace);
-    };
+    // Update place with new image
+    const { data, error } = await supabase
+      .from('places')
+      .update({
+        images: [...(editedPlace.images || []), base64].slice(-3) // Keep last 3 images
+      })
+      .eq('id', editedPlace.id)
+      .select()
+      .single();
 
-    const addComment = async () => {
-      if (!newComment.value.trim()) return;
-
-      try {
-        const comment = {
-          text: newComment.value.trim(),
-          date: new Date().toISOString(),
-          user_id: (await supabase.auth.getUser()).data.user.id
-        };
-
-        const { error } = await supabase
-          .from('places')
-          .update({
-            comments: [...editedPlace.comments, comment]
-          })
-          .eq('id', editedPlace.id);
-
-        if (error) throw error;
-
-        editedPlace.comments.push(comment);
-        newComment.value = '';
-        emit('update', editedPlace);
-      } catch (error) {
-        console.error('Comment error:', error);
-        alert('Failed to add comment');
-      }
-    };
-
+    if (error) throw error;
+    
+    editedPlace.images = data.images;
+    emit('update', editedPlace);
+  } catch (error) {
+    console.error('Image upload error:', error);
+    alert('Failed to upload image');
+  }
+};
     // Helper methods
     const closeDialog = () => emit('close');
     const showFullscreen = (img) => fullscreenImage.value = img;
