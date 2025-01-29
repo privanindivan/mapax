@@ -13,31 +13,39 @@
       @logout="handleLogout"
     />
 
-    <!-- Ranking Modal -->
+    <!-- Ranking Modal with Category Filters -->
     <div v-if="showRanking" class="ranking-overlay">
       <div class="ranking-content">
         <button @click="showRanking = false" class="close-button">×</button>
         
-        <!-- Category Filter -->
         <div class="category-filter">
-          <button 
-            v-for="category in categories" 
-            :key="category.value" 
-            @click="setCategoryFilter(category.value)"
-            :class="['category-button', { active: categoryFilter === category.value }]"
+          <button
+            v-for="category in categories"
+            :key="category.value"
+            @click="toggleCategoryFilter(category.value)"
+            :class="['category-button', { active: activeCategory === category.value }]"
           >
             {{ category.emoji }} {{ category.label }}
           </button>
         </div>
 
         <div class="ranking-list">
-          <div v-for="place in filteredRanking" :key="place.id" class="ranking-item">
+          <div 
+            v-for="place in filteredPlaces" 
+            :key="place.id" 
+            class="ranking-item"
+          >
             <span class="rank-number">{{ place.rank }}</span>
             <div class="rank-details">
               <h3>{{ place.name }}</h3>
-              <p class="votes">{{ place.votes || 0 }} votes</p>
+              <p class="votes">{{ place.votes }} votes</p>
             </div>
-            <button @click="selectAndCloseRanking(place.id)" class="view-button">View</button>
+            <button 
+              @click="selectAndCenterPlace(place.id)" 
+              class="view-button"
+            >
+              View
+            </button>
           </div>
         </div>
       </div>
@@ -45,28 +53,24 @@
 
     <MapView
       ref="mapRef"
-      :markers="markers"
+      :markers="places"
       :is-adding-mode="isAddingMode"
-      :is-authenticated="!!user"
-      @marker-click="selectMarker"
+      @marker-click="handleMarkerClick"
       @map-click="handleMapClick"
       @toggle-add-mode="toggleAddMode"
       @location-error="handleLocationError"
     />
 
-    <PlaceDetailsDialog 
-      v-if="selectedMarker" 
-      :place="selectedMarker"
-      :can-edit="!!user"
-      :can-delete="canDeletePlace"
-      @close="closeDialog"
-      @update="updatePlace"
-      @delete="handleDelete"
-      @request-login="showAuthModal = true"
+    <PlaceDetailsDialog
+      v-if="selectedPlace"
+      :place="selectedPlace"
+      @close="selectedPlace = null"
+      @update="handlePlaceUpdate"
+      @delete="handlePlaceDelete"
     />
 
-    <AuthModal 
-      v-if="showAuthModal" 
+    <AuthModal
+      v-if="showAuthModal"
       @close="showAuthModal = false"
       @auth-success="handleAuthSuccess"
     />
@@ -74,34 +78,24 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import MapView from './components/MapView.vue';
-import PlaceDetailsDialog from './components/PlaceDetailsDialog.vue';
-import UserMenu from './components/UserMenu.vue';
-import AuthModal from './components/AuthModal.vue';
+import { ref, computed, onMounted } from 'vue';
 import { supabase } from './services/supabase';
 import { auth } from './services/auth';
 
 export default {
-  name: 'App',
-  components: {
-    MapView,
-    PlaceDetailsDialog,
-    UserMenu,
-    AuthModal
-  },
   setup() {
-    const markers = ref([]);
-    const selectedMarker = ref(null);
+    // Reactive State
+    const places = ref([]);
+    const selectedPlace = ref(null);
     const isAddingMode = ref(false);
     const showRanking = ref(false);
-    const user = ref(null);
     const showAuthModal = ref(false);
+    const user = ref(null);
     const mapRef = ref(null);
-    const categoryFilter = ref(null);
+    const activeCategory = ref(null);
 
-    // Categories for filtering
-    const categories = ref([
+    // Constants
+    const categories = [
       { value: 'office', label: 'Office', emoji: '🏛️' },
       { value: 'restaurant', label: 'Restaurant', emoji: '🥣' },
       { value: 'shipping', label: 'Shipping', emoji: '📦' },
@@ -111,232 +105,126 @@ export default {
       { value: 'store', label: 'Store', emoji: '🏪' },
       { value: 'barber', label: 'Barber', emoji: '✂️' },
       { value: 'default', label: 'Other', emoji: '📍' }
-    ]);
+    ];
 
-    // Computed properties
-    const sortedPlaces = computed(() => {
-      return [...markers.value]
-        .sort((a, b) => (b.votes || 0) - (a.votes || 0))
-        .map((place, index) => ({
-          ...place,
-          rank: index + 1
-        }));
-    });
+    // Computed Properties
+    const filteredPlaces = computed(() => {
+      let filtered = places.value.sort((a, b) => b.votes - a.votes);
+      
+      if (activeCategory.value) {
+        filtered = filtered.filter(place => 
+          place.type === activeCategory.value
+        );
+      }
 
-    const filteredRanking = computed(() => {
-      if (!categoryFilter.value) return sortedPlaces.value;
-      return sortedPlaces.value.filter(place => place.type === categoryFilter.value);
-    });
-
-    const canDeletePlace = computed(() => {
-      if (!selectedMarker.value || !user.value) return false;
-      return selectedMarker.value.user_id === user.value.id;
+      return filtered.map((place, index) => ({
+        ...place,
+        rank: index + 1
+      }));
     });
 
     // Methods
     const loadPlaces = async () => {
       try {
-        const response = await supabase
+        const { data, error } = await supabase
           .from('places')
           .select('*')
-          .order('created_at', { ascending: false });
+          .order('votes', { ascending: false });
 
-        if (response.error) throw response.error;
-
-        markers.value = response.data.map(place => ({
-          id: place.id,
-          lat: place.latitude || 0,
-          lng: place.longitude || 0,
-          name: place.name || 'Unnamed Place',
-          description: place.description || '',
-          votes: place.votes || 0,
-          images: place.images || [],
-          comments: place.comments || [],
-          hasVoted: place.has_voted || false,
-          lastEdited: place.last_edited || new Date().toISOString(),
-          type: place.type || 'default',
-          user_id: place.user_id
-        }));
+        if (error) throw error;
+        places.value = data || [];
       } catch (error) {
-        console.error('LoadPlaces error:', error);
-        markers.value = [];
+        console.error('Error loading places:', error);
       }
     };
 
-    const handleAuthSuccess = (userData) => {
-      user.value = userData;
-      showAuthModal.value = false;
+    const handleMarkerClick = (placeId) => {
+      selectedPlace.value = places.value.find(p => p.id === placeId);
+      centerMapOnPlace(placeId);
     };
 
-    const handleLogout = async () => {
-      await auth.signOut();
-      user.value = null;
-      selectedMarker.value = null;
-      isAddingMode.value = false;
-    };
-
-    const toggleRanking = () => {
-      showRanking.value = !showRanking.value;
-    };
-
-    const selectAndCloseRanking = (id) => {
-      const marker = markers.value.find(m => m.id === id);
-      if (marker && mapRef.value) {
-        mapRef.value.setView([marker.lat, marker.lng], 18);
-      }
-      selectMarker(id);
+    const selectAndCenterPlace = (placeId) => {
+      handleMarkerClick(placeId);
       showRanking.value = false;
     };
 
-    const selectMarker = (id) => {
-      selectedMarker.value = markers.value.find((marker) => marker.id === id);
+    const centerMapOnPlace = (placeId) => {
+      const place = places.value.find(p => p.id === placeId);
+      if (place && mapRef.value?.map) {
+        mapRef.value.map.setView([place.lat, place.lng], 18);
+      }
     };
 
     const handleMapClick = async (latlng) => {
       if (!user.value) {
         showAuthModal.value = true;
-        isAddingMode.value = false;
         return;
       }
 
-      if (isAddingMode.value) {
-        try {
-          const newPlace = {
-            name: 'New Place',
-            latitude: latlng.lat,
-            longitude: latlng.lng,
-            description: 'Add description here...',
-            user_id: user.value.id,
-            votes: 0
-          };
-
-          const { data, error } = await supabase
-            .from('places')
-            .insert([newPlace])
-            .select()
-            .single();
-
-          if (error) throw error;
-
-          const newMarker = {
-            id: data.id,
-            lat: data.latitude,
-            lng: data.longitude,
-            name: data.name,
-            description: data.description,
-            votes: data.votes || 0,
-            user_id: data.user_id
-          };
-
-          markers.value.push(newMarker);
-          selectedMarker.value = newMarker;
-          isAddingMode.value = false;
-        } catch (error) {
-          console.error('Error adding place:', error);
-          alert('Failed to add place. Please try again.');
-        }
-      }
-    };
-
-    const updatePlace = async (updatedPlace) => {
       try {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('places')
-          .update({
-            name: updatedPlace.name,
-            description: updatedPlace.description,
-            votes: updatedPlace.votes,
-            images: updatedPlace.images,
-            comments: updatedPlace.comments,
-            has_voted: updatedPlace.hasVoted,
-            last_edited: new Date()
-          })
-          .eq('id', updatedPlace.id);
+          .insert([{
+            name: 'New Place',
+            lat: latlng.lat,
+            lng: latlng.lng,
+            user_id: user.value.id
+          }])
+          .select()
+          .single();
 
         if (error) throw error;
-
-        const index = markers.value.findIndex(m => m.id === updatedPlace.id);
-        if (index !== -1) {
-          markers.value[index] = {
-            ...updatedPlace,
-            lastEdited: new Date().toLocaleString()
-          };
-          if (selectedMarker.value?.id === updatedPlace.id) {
-            selectedMarker.value = markers.value[index];
-          }
-        }
+        places.value = [data, ...places.value];
+        isAddingMode.value = false;
       } catch (error) {
-        console.error('Error updating place:', error);
+        console.error('Error adding place:', error);
       }
     };
 
-    const handleLocationError = (error) => {
-      alert(error);
+    const toggleCategoryFilter = (category) => {
+      activeCategory.value = activeCategory.value === category ? null : category;
     };
 
-    const handleDelete = async (placeId) => {
-      markers.value = markers.value.filter(m => m.id !== placeId);
-      selectedMarker.value = null;
+    // Auth Handlers
+    const handleAuthSuccess = (userData) => {
+      user.value = userData;
+      showAuthModal.value = false;
+      loadPlaces();
     };
 
-    const setCategoryFilter = (category) => {
-      categoryFilter.value = categoryFilter.value === category ? null : category;
+    const handleLogout = async () => {
+      await auth.signOut();
+      user.value = null;
+      places.value = [];
     };
 
-    // Initialize
+    // Lifecycle Hooks
     onMounted(async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          user.value = session.user;
-          await loadPlaces();
-        }
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-          if (event === 'SIGNED_IN') {
-            user.value = session?.user || null;
-            await loadPlaces();
-            showAuthModal.value = false;
-          } else if (event === 'SIGNED_OUT') {
-            user.value = null;
-            markers.value = [];
-            selectedMarker.value = null;
-          }
-        });
-
-        onBeforeUnmount(() => {
-          subscription.unsubscribe();
-        });
-      } catch (error) {
-        console.error('Auth setup error:', error);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        user.value = session.user;
+        loadPlaces();
       }
     });
 
     return {
-      markers,
-      selectedMarker,
+      places,
+      selectedPlace,
       isAddingMode,
       showRanking,
-      user,
       showAuthModal,
-      sortedPlaces,
-      filteredRanking,
-      canDeletePlace,
+      user,
+      mapRef,
       categories,
-      categoryFilter,
+      activeCategory,
+      filteredPlaces,
+      handleMarkerClick,
+      handleMapClick,
+      toggleCategoryFilter,
+      selectAndCenterPlace,
       handleAuthSuccess,
       handleLogout,
-      toggleRanking,
-      selectAndCloseRanking,
-      selectMarker,
-      handleMapClick,
-      toggleAddMode,
-      updatePlace,
-      handleLocationError,
-      closeDialog: () => selectedMarker.value = null,
-      handleDelete,
-      setCategoryFilter,
-      mapRef,
+      toggleRanking: () => showRanking.value = !showRanking.value,
     };
   }
 };
@@ -515,5 +403,36 @@ export default {
 
 .user-menu {
   margin-right: 10px;
+}
+.category-filter {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.category-button {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid #ddd;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.category-button.active {
+  background: #2196F3;
+  color: white;
+  border-color: #2196F3;
+}
+
+.ranking-item {
+  transition: transform 0.2s;
+}
+
+.ranking-item:hover {
+  transform: translateX(5px);
 }
 </style>
