@@ -16,6 +16,17 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MapControls from './MapControls.vue';
 
+export const PLACE_TYPES = [
+  { value: 'office', label: '🏛️ Office' },
+  { value: 'building', label: '🏢 Building' },
+  { value: 'restaurant', label: '🥣 Restaurant' },
+  { value: 'shipping', label: '📦 Shipping' },
+  { value: 'laundry', label: '👕 Laundry' },
+  { value: 'church', label: '⛪ Church' },
+  { value: 'store', label: '🏪 Store' },
+  { value: 'barber', label: '✂️ Barber' }
+];
+
 const PHILIPPINES_BOUNDS = {
   southwest: [4.566667, 116.7],
   northeast: [21.120556, 126.537778]
@@ -23,69 +34,78 @@ const PHILIPPINES_BOUNDS = {
 
 const GMA_COORDINATES = [14.293054, 121.005381];
 
-// Define marker icons at component level
 const MARKER_ICONS = {
   office: L.divIcon({
-    html: '🏛️',
-    className: 'custom-marker',
-    iconSize: [30, 30]
+    html: '<div class="marker-icon">🏛️</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
+  }),
+  building: L.divIcon({
+    html: '<div class="marker-icon">🏢</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   restaurant: L.divIcon({
-    html: '🥣',
-    className: 'custom-marker',
-    iconSize: [30, 30]
+    html: '<div class="marker-icon">🥣</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   shipping: L.divIcon({
-    html: '📦',
-    className: 'custom-marker',
-    iconSize: [30, 30]
+    html: '<div class="marker-icon">📦</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   laundry: L.divIcon({
-    html: '👕',
-    className: 'custom-marker',
-    iconSize: [30, 30]
+    html: '<div class="marker-icon">👕</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   church: L.divIcon({
-    html: '⛪',
-    className: 'custom-marker',
-    iconSize: [30, 30]
-  }),
-  school: L.divIcon({
-    html: '🏫',
-    className: 'custom-marker',
-    iconSize: [30, 30]
+    html: '<div class="marker-icon">⛪</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   store: L.divIcon({
-    html: '🏪',
-    className: 'custom-marker',
-    iconSize: [30, 30]
+    html: '<div class="marker-icon">🏪</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   barber: L.divIcon({
-    html: '✂️',
-    className: 'custom-marker',
-    iconSize: [30, 30]
+    html: '<div class="marker-icon">✂️</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   default: L.divIcon({
-    html: '📍',
-    className: 'custom-marker',
-    iconSize: [30, 30]
+    html: '<div class="marker-icon">📍</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   })
 };
 
 export default {
   name: 'MapView',
-  components: {
-    MapControls
-  },
+  components: { MapControls },
   props: {
-    markers: {
-      type: Array,
-      default: () => []
-    },
-    isAddingMode: {
-      type: Boolean,
-      default: false
-    }
+    markers: { type: Array, default: () => [] },
+    isAddingMode: { type: Boolean, default: false }
   },
   emits: ['marker-click', 'map-click', 'toggle-add-mode', 'location-error'],
   
@@ -95,10 +115,13 @@ export default {
     const userLocationMarker = ref(null);
     const tempMarker = ref(null);
 
-    const handleShowDetails = (event) => {
-      const detail = event.detail;
-      if (detail) {
-        emit('marker-click', detail);
+    // Proper map view control method
+    const setMapView = (latlng, zoom = 18) => {
+      if (map.value) {
+        map.value.setView(latlng, zoom, {
+          animate: true,
+          duration: 1
+        });
       }
     };
 
@@ -114,7 +137,7 @@ export default {
         maxBoundsViscosity: 1.0
       });
 
-      // Add Thunderforest tile layer
+      // Add tile layer
       L.tileLayer('https://tile.thunderforest.com/neighbourhood/{z}/{x}/{y}.png?apikey=375c923e2b8447249e6774bc2d2f3fa2', {
         attribution: '',
         minZoom: 15,
@@ -123,110 +146,96 @@ export default {
 
       markerGroup.value = L.layerGroup().addTo(map.value);
 
-      // Add event listener for custom events
-      document.addEventListener('showDetails', handleShowDetails);
-
-      // Add click handler for map
+      // Map click handler
       map.value.on('click', (e) => {
         if (props.isAddingMode) {
-          emit('map-click', e.latlng);
-          if (tempMarker.value) {
-            markerGroup.value.removeLayer(tempMarker.value);
+          if (confirm('Add place here?')) {
+            tempMarker.value?.remove();
+            tempMarker.value = L.marker(e.latlng, {
+              icon: MARKER_ICONS.default
+            }).addTo(markerGroup.value);
+            emit('map-click', e.latlng);
           }
-          tempMarker.value = L.circleMarker(e.latlng, {
-            radius: 8,
-            fillColor: '#FF4081',
-            color: '#fff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.8
-          }).addTo(markerGroup.value);
         }
       });
     });
 
-    // Watch markers
+    // Marker watcher
     watch(() => props.markers, (newMarkers) => {
-      if (!map.value || !markerGroup.value) return;
-      markerGroup.value.clearLayers();
-      
+      markerGroup.value?.clearLayers();
+
       newMarkers.forEach(marker => {
         const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
-
+        
         const markerElement = L.marker([marker.lat, marker.lng], { icon })
           .addTo(markerGroup.value)
-          .on('click', () => {
-            map.value.setView([marker.lat, marker.lng], 18, {
-              animate: true,
-              duration: 1
-            });
-            emit('marker-click', marker.id);
+          .bindPopup(`
+            <div class="marker-popup">
+              ${marker.images?.length > 0 ? `
+                <div class="popup-image">
+                  <img src="${marker.images[0]}" alt="${marker.name}" />
+                </div>` : ''}
+              <h3>${marker.name || 'Unnamed Place'}</h3>
+              <button class="view-details-btn" data-id="${marker.id}">
+                View Details
+              </button>
+            </div>
+          `, { 
+            closeButton: false,
+            className: 'custom-popup'
           });
 
-        markerElement.bindPopup(`
-          <div class="marker-popup">
-            <h3>${marker.name || 'Unnamed Place'}</h3>
-            <button onclick="document.dispatchEvent(new CustomEvent('showDetails', {detail: '${marker.id}'}))">
-              View Details
-            </button>
-          </div>
-        `);
+        // Proper click handling
+        markerElement.on('popupopen', () => {
+          document.querySelector(`[data-id="${marker.id}"]`)?.addEventListener('click', () => {
+            emit('marker-click', marker.id);
+          });
+        });
+
+        markerElement.on('click', () => {
+          setMapView([marker.lat, marker.lng]);
+        });
       });
     }, { deep: true });
 
+    // Geolocation handler
     const getCurrentLocation = () => {
-      if (!map.value) return;
-
       if (!navigator.geolocation) {
-        emit('location-error', 'Geolocation is not supported by your browser');
+        emit('location-error', 'Geolocation not supported');
         return;
       }
 
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          if (userLocationMarker.value) {
-            map.value.removeLayer(userLocationMarker.value);
-          }
-
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          userLocationMarker.value?.remove();
           userLocationMarker.value = L.circleMarker([latitude, longitude], {
             radius: 8,
             fillColor: '#4CAF50',
             color: '#fff',
             weight: 2,
-            opacity: 1,
             fillOpacity: 0.8
           }).addTo(markerGroup.value);
-
-          map.value.setView([latitude, longitude], 16, {
-            animate: true,
-            duration: 1
-          });
+          setMapView([latitude, longitude]);
         },
-        () => {
-          emit('location-error', 'Unable to retrieve your location');
-        }
+        (err) => emit('location-error', err.message)
       );
     };
 
     const toggleAddMode = () => {
       emit('toggle-add-mode', !props.isAddingMode);
-      if (tempMarker.value && markerGroup.value) {
-        markerGroup.value.removeLayer(tempMarker.value);
-        tempMarker.value = null;
-      }
+      tempMarker.value?.remove();
+      tempMarker.value = null;
     };
 
     onBeforeUnmount(() => {
-      document.removeEventListener('showDetails', handleShowDetails);
-      if (map.value) {
-        map.value.remove();
-      }
+      map.value?.remove();
     });
 
     return {
       getCurrentLocation,
-      toggleAddMode
+      toggleAddMode,
+      setMapView
     };
   }
 };
@@ -262,13 +271,83 @@ export default {
   transform: translateX(-50%);
   z-index: 1000;
   margin: 0;
-  padding: 10px 20px;
+  padding: 5px 10px;
   background: rgba(255, 255, 255, 0.9);
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Hide Leaflet controls */
+:deep(.custom-popup) {
+  min-width: 150px;
+  margin-bottom: 15px !important;
+}
+
+:deep(.marker-popup) {
+  text-align: center;
+  padding: 5px !important;
+}
+
+:deep(.marker-popup h3) {
+  margin: 0 0 8px 0;
+  font-weight: bold;
+}
+
+:deep(.view-details-btn) {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+:deep(.view-details-btn:hover) {
+  background: #45a049;
+}
+
+:deep(.popup-image) {
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  border-radius: 4px;
+}
+
+:deep(.popup-image img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+:deep(.custom-marker-wrapper) {
+  position: absolute !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  background: none !important;
+  border: none !important;
+  pointer-events: none !important;
+}
+
+:deep(.marker-icon) {
+  font-size: 24px !important;
+  line-height: 1 !important;
+  pointer-events: auto !important;
+  filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.3)) !important;
+}
+
+:deep(.leaflet-popup-content-wrapper) {
+  border-radius: 8px !important;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.16) !important;
+}
+
+:deep(.leaflet-popup-tip) {
+  box-shadow: 0 3px 6px rgba(0,0,0,0.16) !important;
+}
+
 :deep(.leaflet-control-container),
 :deep(.leaflet-control-attribution),
 :deep(.leaflet-control-container .leaflet-bottom),

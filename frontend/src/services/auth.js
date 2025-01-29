@@ -20,26 +20,22 @@ export const auth = {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/v1/callback`,
+          redirectTo: window.location.origin,
+          skipBrowserRedirect: false,
           queryParams: {
             access_type: 'offline',
-            prompt: 'consent',
+            prompt: 'select_account'
           }
         }
       });
       
-      if (error) {
-        console.error('Google sign in error:', error);
-        return { data: null, error };
-      }
-      
-      console.log('Sign in successful:', data);
+      if (error) throw error;
       return { data, error: null };
     } catch (error) {
       console.error('Exception during Google sign in:', error);
       return { data: null, error };
     }
-  },
+  }, // Added comma here
 
   async signOut() {
     try {
@@ -52,9 +48,8 @@ export const auth = {
       console.error('Exception during sign out:', error);
       return { error };
     }
-  },
+  }, // Added comma here
 
-  // Add this to handle the callback
   async handleAuthCallback() {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -64,6 +59,7 @@ export const auth = {
         console.log('Auth callback successful:', session);
         return { data: session, error: null };
       }
+      return { data: null, error: null };
     } catch (error) {
       console.error('Auth callback error:', error);
       return { data: null, error };

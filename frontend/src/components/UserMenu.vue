@@ -1,14 +1,11 @@
 <template>
   <div class="user-menu">
     <button v-if="!user" @click="$emit('login')" class="login-button">
-      Sign In
+      Log In
     </button>
-    <div v-else class="user-info">
-      <span class="user-email">{{ truncatedEmail }}</span>
-      <button @click="$emit('logout')" class="logout-button">
-        Sign Out
-      </button>
-    </div>
+    <button v-else @click="$emit('logout')" class="user-icon-button">
+      Log Out
+    </button>
   </div>
 </template>
 
@@ -40,14 +37,27 @@ export default {
   z-index: 1000;
 }
 
-.login-button,
-.logout-button {
-  padding: 8px 16px;
-  background: white;
+.login-button {
+  padding: 4px 8px;
+  background: white !important;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.logout-button {
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 .user-info {
@@ -68,8 +78,7 @@ export default {
   white-space: nowrap;
 }
 
-.logout-button {
-  background: #ff4081;
-  color: white;
-}
+
+
+
 </style>
