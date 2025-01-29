@@ -216,56 +216,64 @@ export default {
       Object.assign(editedPlace, newPlace);
     });
 
-    // Computed properties
+    // Computed
     const formattedLastEdited = computed(() => {
       return editedPlace.last_edited 
         ? new Date(editedPlace.last_edited).toLocaleString()
         : 'Not edited';
     });
 
-    // Core functionality methods
+    // Fixed function for editing
     const toggleEdit = async () => {
       if (isEditing.value) {
         try {
+          const updates = {
+            name: editedPlace.name,
+            description: editedPlace.description,
+            type: editedPlace.type,
+            last_edited: new Date().toISOString()
+          };
+
           const { error } = await supabase
             .from('places')
-            .update({
-              name: editedPlace.name,
-              description: editedPlace.description,
-              type: editedPlace.type,
-              last_edited: new Date().toISOString()
-            })
+            .update(updates)
             .eq('id', editedPlace.id);
 
           if (error) throw error;
-          emit('update', editedPlace);
+
+          emit('update', { ...editedPlace, ...updates });
+          isEditing.value = false;
         } catch (error) {
-          console.error('Update error:', error);
           alert('Failed to save changes');
         }
+      } else {
+        isEditing.value = true;
       }
-      isEditing.value = !isEditing.value;
     };
 
+    // Fixed voting function
     const handleVote = async (direction) => {
       try {
         const voteValue = direction === 'up' ? 1 : -1;
         const { data, error } = await supabase
           .from('places')
-          .update({ votes: editedPlace.votes + voteValue })
+          .update({ 
+            votes: (editedPlace.votes || 0) + voteValue 
+          })
           .eq('id', editedPlace.id)
           .select()
           .single();
 
         if (error) throw error;
+        
         editedPlace.votes = data.votes;
         emit('update', editedPlace);
       } catch (error) {
-        console.error('Vote error:', error);
         alert('Failed to vote');
       }
     };
 
+    // Fixed delete function
     const handleDelete = async () => {
       if (!confirm('Are you sure you want to delete this place?')) return;
       
@@ -276,18 +284,24 @@ export default {
           .eq('id', editedPlace.id);
 
         if (error) throw error;
+        
         emit('delete', editedPlace.id);
         emit('close');
       } catch (error) {
-        console.error('Delete error:', error);
         alert('Failed to delete place');
       }
     };
 
+    // Fixed image upload
     const handleImageUpload = async (event) => {
       const file = event.target.files[0];
       if (!file) return;
       
+      if (file.size > 5000000) {
+        alert('Image too large. Maximum size is 5MB.');
+        return;
+      }
+
       try {
         const base64 = await new Promise((resolve) => {
           const reader = new FileReader();
@@ -307,15 +321,13 @@ export default {
         editedPlace.images = updatedImages;
         emit('update', editedPlace);
       } catch (error) {
-        console.error('Image upload error:', error);
         alert('Failed to upload image');
       } finally {
-        if (fileInput.value) {
-          fileInput.value.value = '';
-        }
+        if (fileInput.value) fileInput.value.value = '';
       }
     };
 
+    // Fixed image removal
     const removeImage = async (index) => {
       try {
         const updatedImages = [...(editedPlace.images || [])];
@@ -331,11 +343,11 @@ export default {
         editedPlace.images = updatedImages;
         emit('update', editedPlace);
       } catch (error) {
-        console.error('Remove image error:', error);
         alert('Failed to remove image');
       }
     };
 
+    // Fixed comment function
     const addComment = async () => {
       if (!newComment.value.trim()) return;
 
@@ -359,7 +371,6 @@ export default {
         newComment.value = '';
         emit('update', editedPlace);
       } catch (error) {
-        console.error('Comment error:', error);
         alert('Failed to add comment');
       }
     };
