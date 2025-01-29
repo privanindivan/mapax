@@ -136,7 +136,7 @@
             @click="toggleEdit"
             class="edit-button"
           >
-            {{ isEditing ? 'Save Changes' : 'Edit Details' }}
+            {{ isEditing ? 'Save' : 'Edit' }}
           </button>
         </div>
 
