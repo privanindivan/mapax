@@ -3,9 +3,9 @@
     <div class="dialog-content">
       <button @click="closeDialog" class="close-button">×</button>
       
-      <!-- Delete Button - Only visible to owner -->
+      <!-- Delete Button -->
       <button 
-        v-if="isOwner" 
+        v-if="canDelete" 
         @click="handleDelete" 
         class="delete-button"
       >
@@ -21,14 +21,11 @@
           @keyup.enter="saveEdits"
         >
         <h2 v-else class="place-name">{{ place.name || 'Unnamed Place' }}</h2>
-        
-        <!-- Owner Badge -->
-        <span v-if="isOwner" class="owner-badge">👑 Owner</span>
       </div>
 
       <!-- Images Section -->
       <div class="images-section">
-        <h3>Images ({{ editedPlace.images?.length || 0 }}/3)</h3>
+        <h3>({{ editedPlace.images?.length || 0 }}/3)</h3>
         <div v-if="editedPlace.images?.length" class="image-grid">
           <div 
             v-for="(image, index) in editedPlace.images" 
@@ -36,13 +33,13 @@
             class="image-container"
           >
             <img 
-              :src="image.url" 
+              :src="image" 
               :alt="`Image ${index + 1}`" 
               class="place-image"
-              @click="showFullscreen(image.url)"
+              @click="showFullscreen(image)"
             >
             <button 
-              v-if="isOwner"
+              v-if="isEditing"
               @click="removeImage(index)"
               class="remove-image"
             >
@@ -51,8 +48,8 @@
           </div>
         </div>
         
-        <!-- Image Upload - Only for owner -->
-        <div v-if="isOwner && (editedPlace.images?.length || 0) < 3" class="upload-section">
+        <!-- Image Upload -->
+        <div v-if="isEditing && (editedPlace.images?.length || 0) < 3" class="upload-section">
           <input
             type="file"
             accept="image/*"
@@ -73,16 +70,16 @@
       <div class="voting-section">
         <button 
           @click="handleVote('down')"
-          :class="['vote-button', { active: userVote === 'down' }]"
-          :disabled="loading"
+          :class="['vote-button', { active: hasVoted === 'down' }]"
+          :disabled="place.hasVoted"
         >
           ▼
         </button>
         <span class="vote-count">{{ editedPlace.votes || 0 }}</span>
         <button 
           @click="handleVote('up')"
-          :class="['vote-button', { active: userVote === 'up' }]"
-          :disabled="loading"
+          :class="['vote-button', { active: hasVoted === 'up' }]"
+          :disabled="place.hasVoted"
         >
           ▲
         </button>
@@ -133,9 +130,9 @@
             {{ editedPlace.description || 'No description available' }}
           </p>
 
-          <!-- Edit/Save Button - Only for owner -->
+          <!-- Edit/Save Button -->
           <button 
-            v-if="isOwner"
+            v-if="canEdit"
             @click="toggleEdit"
             class="edit-button"
           >
@@ -147,9 +144,6 @@
         <div class="metadata-section">
           <p class="last-edited">
             Last edited: {{ formattedLastEdited }}
-          </p>
-          <p class="created-by">
-            Created by: {{ place.creator_name || 'Anonymous' }}
           </p>
         </div>
       </div>
@@ -166,22 +160,19 @@
           <button 
             @click="addComment"
             class="add-comment-button"
-            :disabled="!newComment.trim() || loading"
+            :disabled="!newComment.trim()"
           >
             Post Comment
           </button>
 
           <div class="comments-list">
             <div 
-              v-for="comment in sortedComments" 
+              v-for="comment in editedPlace.comments" 
               :key="comment.id" 
               class="comment"
             >
               <p class="comment-text">{{ comment.text }}</p>
-              <div class="comment-meta">
-                <span class="comment-author">{{ comment.user_name || 'Anonymous' }}</span>
-                <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
-              </div>
+              <p class="comment-date">{{ formatDate(comment.date) }}</p>
             </div>
           </div>
         </div>
@@ -200,26 +191,25 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, watch, computed } from 'vue';
 import { supabase } from '../services/supabase';
 
 export default {
   name: 'PlaceDetailsDialog',
   props: {
     place: { type: Object, required: true },
-    userId: { type: String, required: true }
+    canEdit: { type: Boolean, default: false },
+    canDelete: { type: Boolean, default: false }
   },
   emits: ['close', 'update', 'delete'],
-  
   setup(props, { emit }) {
-    const loading = ref(false);
+    // State management
     const isEditing = ref(false);
     const activeTab = ref('details');
-    const userVote = ref(null);
+    const hasVoted = ref(null);
     const newComment = ref('');
     const fullscreenImage = ref(null);
     const editedPlace = reactive({ ...props.place });
-
     const PLACE_TYPES = [
       { value: 'office', label: '🏛️ Office' },
       { value: 'building', label: '🏢 Building' },
@@ -228,41 +218,22 @@ export default {
       { value: 'laundry', label: '👕 Laundry' },
       { value: 'church', label: '⛪ Church' },
       { value: 'store', label: '🏪 Store' },
-      { value: 'barber', label: '✂️ Barber' },
-      { value: 'personal', label: '👤 Personal' }
+      { value: 'barber', label: '✂️ Barber' }
     ];
 
+    // Watchers
+    watch(() => props.place, (newPlace) => {
+      Object.assign(editedPlace, newPlace);
+    });
+
     // Computed properties
-    const isOwner = computed(() => props.userId === editedPlace.creator_id);
-    
     const formattedLastEdited = computed(() => {
-      return new Date(editedPlace.last_edited).toLocaleString();
-    });
-
-    const sortedComments = computed(() => {
-      return [...(editedPlace.comments || [])].sort((a, b) => 
-        new Date(b.created_at) - new Date(a.created_at)
-      );
-    });
-
-    // Load user's previous vote
-    onMounted(async () => {
-      const { data } = await supabase
-        .from('votes')
-        .select('vote_type')
-        .eq('place_id', props.place.id)
-        .eq('user_id', props.userId)
-        .single();
-      
-      if (data) {
-        userVote.value = data.vote_type;
-      }
+      return new Date(editedPlace.lastEdited).toLocaleString();
     });
 
     // Methods
     const toggleEdit = async () => {
       if (isEditing.value) {
-        loading.value = true;
         try {
           const { error } = await supabase
             .from('places')
@@ -270,6 +241,7 @@ export default {
               name: editedPlace.name,
               description: editedPlace.description,
               type: editedPlace.type,
+              images: editedPlace.images,
               last_edited: new Date().toISOString()
             })
             .eq('id', editedPlace.id);
@@ -279,84 +251,40 @@ export default {
         } catch (error) {
           console.error('Update error:', error);
           alert('Failed to save changes');
-        } finally {
-          loading.value = false;
         }
       }
       isEditing.value = !isEditing.value;
     };
 
     const handleVote = async (direction) => {
-      if (loading.value) return;
-      loading.value = true;
-
       try {
-        const voteChange = userVote.value === direction ? -1 : 1;
+        const voteChange = direction === 'up' ? 1 : -1;
+        const newVotes = editedPlace.votes + voteChange;
         
-        // Update votes table
-        if (userVote.value) {
-          await supabase
-            .from('votes')
-            .delete()
-            .eq('place_id', editedPlace.id)
-            .eq('user_id', props.userId);
-        }
-        
-        if (userVote.value !== direction) {
-          await supabase
-            .from('votes')
-            .insert({
-              place_id: editedPlace.id,
-              user_id: props.userId,
-              vote_type: direction
-            });
-        }
-
-        // Update place votes count
         const { error } = await supabase
           .from('places')
           .update({ 
-            votes: editedPlace.votes + voteChange
+            votes: newVotes,
+            has_voted: true 
           })
           .eq('id', editedPlace.id);
 
         if (error) throw error;
         
-        editedPlace.votes += voteChange;
-        userVote.value = userVote.value === direction ? null : direction;
+        editedPlace.votes = newVotes;
+        editedPlace.hasVoted = true;
+        hasVoted.value = direction;
         emit('update', editedPlace);
       } catch (error) {
         console.error('Voting error:', error);
         alert('Voting failed');
-      } finally {
-        loading.value = false;
       }
     };
 
     const handleDelete = async () => {
-      if (!confirm('Are you sure you want to delete this place? This action cannot be undone.')) return;
+      if (!confirm('Permanently delete this place?')) return;
       
-      loading.value = true;
       try {
-        // Delete related records first
-        await supabase
-          .from('votes')
-          .delete()
-          .eq('place_id', editedPlace.id);
-        
-        await supabase
-          .from('comments')
-          .delete()
-          .eq('place_id', editedPlace.id);
-
-        // Delete images from storage
-        for (const image of editedPlace.images || []) {
-          await supabase.storage
-            .from('place-images')
-            .remove([image.path]);
-        }
-
-        // Finally delete the place
         const { error } = await supabase
           .from('places')
           .delete()
@@ -367,115 +295,52 @@ export default {
         closeDialog();
       } catch (error) {
         console.error('Delete error:', error);
-        alert('Failed to delete place');
-      } finally {
-        loading.value = false;
+        alert('Deletion failed');
       }
     };
 
-    const handleImageUpload = async (event) => {
+    const handleImageUpload = (event) => {
       const file = event.target.files[0];
       if (!file) return;
 
-      loading.value = true;
-      try {
-        // Upload to storage
-        const filename = `${editedPlace.id}/${Date.now()}-${file.name}`;
-        const { error: uploadError, data } = await supabase.storage
-          .from('place-images')
-          .upload(filename, file);
-
-        if (uploadError) throw uploadError;
-
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('place-images')
-          .getPublicUrl(filename);
-
-        // Update place record
-        const newImage = {
-          url: publicUrl,
-          path: filename
-        };
-
-        const images = [...(editedPlace.images || []), newImage];
-        const { error } = await supabase
-          .from('places')
-          .update({ images })
-          .eq('id', editedPlace.id);
-
-        if (error) throw error;
-
-        editedPlace.images = images;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        editedPlace.images = [...editedPlace.images, e.target.result];
         emit('update', editedPlace);
-      } catch (error) {
-        console.error('Image upload error:', error);
-        alert('Failed to upload image');
-      } finally {
-        loading.value = false;
-      }
+      };
+      reader.readAsDataURL(file);
     };
 
-    const removeImage = async (index) => {
-      loading.value = true;
-      try {
-        const imageToRemove = editedPlace.images[index];
-        
-        // Delete from storage
-        await supabase.storage
-          .from('place-images')
-          .remove([imageToRemove.path]);
-
-        // Update place record
-        const images = editedPlace.images.filter((_, i) => i !== index);
-        const { error } = await supabase
-          .from('places')
-          .update({ images })
-          .eq('id', editedPlace.id);
-
-        if (error) throw error;
-
-        editedPlace.images = images;
-        emit('update', editedPlace);
-      } catch (error) {
-        console.error('Image removal error:', error);
-        alert('Failed to remove image');
-      } finally {
-        loading.value = false;
-      }
+    const removeImage = (index) => {
+      editedPlace.images.splice(index, 1);
+      emit('update', editedPlace);
     };
 
     const addComment = async () => {
-      if (!newComment.value.trim() || loading.value) return;
-      
-      loading.value = true;
+      if (!newComment.value.trim()) return;
+
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
         const comment = {
           text: newComment.value.trim(),
-          user_id: user.id,
-          user_name: user.user_metadata.full_name || 'Anonymous',
-          created_at: new Date().toISOString()
+          date: new Date().toISOString(),
+          user_id: (await supabase.auth.getUser()).data.user.id
         };
 
         const { error } = await supabase
-          .from('comments')
-          .insert({
-            place_id: editedPlace.id,
-            ...comment
-          });
+          .from('places')
+          .update({
+            comments: [...editedPlace.comments, comment]
+          })
+          .eq('id', editedPlace.id);
 
         if (error) throw error;
 
-        editedPlace.comments = [...(editedPlace.comments || []), comment];
+        editedPlace.comments.push(comment);
         newComment.value = '';
         emit('update', editedPlace);
       } catch (error) {
         console.error('Comment error:', error);
         alert('Failed to add comment');
-      } finally {
-        loading.value = false;
       }
     };
 
@@ -483,19 +348,17 @@ export default {
     const closeDialog = () => emit('close');
     const showFullscreen = (img) => fullscreenImage.value = img;
     const closeFullscreen = () => fullscreenImage.value = null;
-    const formatDate = (dateString) => new Date(dateString).toLocaleString();
-return {
-      loading,
+    const formatDate = (dateString) => new Date(dateString).toLocaleDateString();
+
+    return {
       isEditing,
       activeTab,
       editedPlace,
       PLACE_TYPES,
       newComment,
-      userVote,
+      hasVoted,
       fullscreenImage,
-      isOwner,
       formattedLastEdited,
-      sortedComments,
       toggleEdit,
       handleVote,
       handleDelete,
@@ -510,8 +373,23 @@ return {
   }
 };
 </script>
-
 <style scoped>
+.delete-button {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  z-index: 2000;
+}
+
+.delete-button:hover {
+  background: #c82333;
+}
 .dialog-overlay {
   position: fixed;
   top: 0;
@@ -529,9 +407,9 @@ return {
   position: relative;
   background: white;
   border-radius: 8px;
-  padding: 40px 20px 20px 20px;
+  padding: 40px 20px 20px 20px; 
   width: 90%;
-  max-width: 600px;
+  max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
 }
@@ -550,64 +428,72 @@ return {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.delete-button {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 6px 12px;
-  cursor: pointer;
+  z-index: 2000;
 }
 
 .dialog-header {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
+}
+
+.place-name {
+  font-size: 24px;
+  margin: 0;
+}
+
+/* Images section styles */
+.remove-image {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.name-input {
-  width: 100%;
-  padding: 8px;
-  font-size: 20px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.owner-badge {
-  background: #ffd700;
-  padding: 4px 8px;
-  border-radius: 12px;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
   font-size: 14px;
+  padding: 0;
 }
 
-.type-selector {
-  margin-bottom: 15px;
+.remove-image:hover {
+  background: rgba(0, 0, 0, 0.7);
 }
 
-.type-select {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 16px;
+.images-section {
+  margin: 10px 0 20px 0;
+  max-width: 100%;
+}
+
+.images-section h3 {
+  margin-bottom: 10px;
 }
 
 .image-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
+  align-items: center; 
 }
-
 .image-container {
   position: relative;
-  padding-top: 75%;
+  width: 100%;
+  height: auto;
+  overflow: hidden;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 0.2s;
+  padding-top: 75%; /* This creates a consistent aspect ratio */
+}
+
+.image-container:hover {
+  transform: scale(1.02);
 }
 
 .place-image {
@@ -616,30 +502,10 @@ return {
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  border-radius: 4px;
-  cursor: pointer;
+  object-fit: contain;
+  background: transparent;
 }
 
-.remove-image {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  border: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.hidden {
-  display: none;
-}
 
 .add-image-button {
   width: 100%;
@@ -649,14 +515,40 @@ return {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  text-align: center;
 }
 
+.fullscreen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 2500;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.fullscreen-image {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  background: none;
+}
+
+/* Voting section styles */
 .voting-section {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 15px;
-  margin: 20px 0;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  margin-bottom: 20px;
 }
 
 .vote-button {
@@ -665,11 +557,7 @@ return {
   font-size: 24px;
   cursor: pointer;
   color: #666;
-  transition: color 0.2s;
-}
-
-.vote-button.active {
-  color: #2196F3;
+  padding: 0;
 }
 
 .vote-button:disabled {
@@ -677,11 +565,19 @@ return {
   cursor: not-allowed;
 }
 
+.vote-button.active {
+  color: #2196F3;
+}
+
 .vote-count {
   font-size: 20px;
   font-weight: bold;
+  color: #333;
+  min-width: 30px;
+  text-align: center;
 }
 
+/* Tabs styles */
 .tabs {
   display: flex;
   border-bottom: 1px solid #ddd;
@@ -689,13 +585,12 @@ return {
 }
 
 .tab-button {
-  flex: 1;
-  padding: 10px;
-  background: none;
+  padding: 10px 20px;
   border: none;
-  border-bottom: 2px solid transparent;
+  background: none;
   cursor: pointer;
   color: #666;
+  border-bottom: 2px solid transparent;
 }
 
 .tab-button.active {
@@ -703,13 +598,23 @@ return {
   border-bottom-color: #2196F3;
 }
 
+/* Content styles */
+.description-section {
+  margin-bottom: 20px;
+}
+
 .description-input {
   width: 100%;
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  resize: vertical;
   margin-bottom: 10px;
+  resize: vertical;
+}
+
+.description-text {
+  margin-bottom: 10px;
+  line-height: 1.5;
 }
 
 .edit-button {
@@ -721,10 +626,18 @@ return {
   cursor: pointer;
 }
 
-.metadata-section {
-  margin-top: 20px;
-  color: #666;
+.last-edited {
   font-size: 14px;
+  color: #666;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Comments styles */
+.comments-section {
+  margin-top: 10px;
 }
 
 .comment-input {
@@ -732,8 +645,8 @@ return {
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  resize: vertical;
   margin-bottom: 10px;
+  resize: vertical;
 }
 
 .add-comment-button {
@@ -743,50 +656,50 @@ return {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  margin-bottom: 20px;
-}
-
-.add-comment-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .comments-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+  margin-top: 20px;
 }
 
 .comment {
   padding: 10px;
-  background: #f5f5f5;
-  border-radius: 4px;
+  border-bottom: 1px solid #eee;
 }
 
-.comment-meta {
+.comment-text {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.comment-date {
   margin-top: 5px;
   font-size: 12px;
   color: #666;
-  display: flex;
-  justify-content: space-between;
 }
 
+.type-select {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+}
+</style>
+
+.hidden { display: none; }
 .fullscreen-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0,0,0,0.9);
+  z-index: 9999;
   display: flex;
-  justify-content: center;
   align-items: center;
-  z-index: 2500;
+  justify-content: center;
 }
-
 .fullscreen-image {
   max-width: 90vw;
   max-height: 90vh;
   object-fit: contain;
 }
-</style>
