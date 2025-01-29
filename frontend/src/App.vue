@@ -84,7 +84,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import MapView from './components/MapView.vue';
 import PlaceDetailsDialog from './components/PlaceDetailsDialog.vue';
 import UserMenu from './components/UserMenu.vue';
@@ -228,10 +228,9 @@ export default {
       }
     };
 
-    const toggleCategoryFilter = (category) => {
-      activeCategory.value = activeCategory.value === category ? null : category;
-    };
-
+  const toggleCategoryFilter = (category) => {
+  selectedCategory.value = selectedCategory.value === category ? null : category;
+};
     // Auth Handlers
     const handleAuthSuccess = (userData) => {
       user.value = userData;
