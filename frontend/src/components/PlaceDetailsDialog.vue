@@ -101,7 +101,6 @@
 
         <div class="metadata-section">
           <p class="last-edited">{{ formatDate(place?.lastEdited) }}</p>
-          <p class="contact-info">pm for issue ronlim016@gmail.com</p>
         </div>
       </div>
 
