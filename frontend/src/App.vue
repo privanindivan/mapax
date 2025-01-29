@@ -167,12 +167,7 @@ export default {
       }
     };
 
-    const handleAuthSuccess = (userData) => {
-      user.value = userData;
-      showAuthModal.value = false;
-      loadPlaces();
-    };
-
+  
     const handleLogout = async () => {
       await auth.signOut();
       user.value = null;
@@ -244,11 +239,6 @@ export default {
       loadPlaces();
     };
 
-    const handleLogout = async () => {
-      await auth.signOut();
-      user.value = null;
-      places.value = [];
-    };
 
     // Lifecycle Hooks
     onMounted(async () => {
@@ -259,35 +249,29 @@ export default {
       }
     });
 
-   return {
- places,
- markers,
- selectedPlace,
- selectedMarker,
- sortedPlaces,
- filteredPlaces,
- isAddingMode,
- showRanking,
- showAuthModal,
- user,
- mapRef,
- categories,
- activeCategory,
- selectedCategory,
- PLACE_TYPES,
- canDeletePlace,
- handleMarkerClick,
- handleMapClick,
- selectMarker,
- toggleCategoryFilter, 
- selectAndCenterPlace,
- selectAndCloseRanking,
- handleAuthSuccess,
- handleLogout,
- handleLocationError: (err) => alert(err),
- toggleRanking: () => showRanking.value = !showRanking.value,
- toggleAddMode: (val) => isAddingMode.value = val,
- closeDialog: () => selectedMarker.value = null
+ return {
+  markers,
+  selectedMarker,
+  sortedPlaces,
+  isAddingMode,
+  showRanking,
+  showAuthModal,
+  user,
+  mapRef,
+  selectedCategory,
+  PLACE_TYPES,
+  canDeletePlace,
+  handleMarkerClick: selectMarker,
+  handleMapClick,
+  selectMarker,
+  toggleCategoryFilter,
+  selectAndCloseRanking,
+  handleAuthSuccess,
+  handleLogout,
+  handleLocationError: (err) => alert(err),
+  toggleRanking: () => showRanking.value = !showRanking.value,
+  toggleAddMode: (val) => isAddingMode.value = val,
+  closeDialog: () => selectedMarker.value = null
 };
   }
 };
