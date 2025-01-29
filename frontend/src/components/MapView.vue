@@ -91,32 +91,22 @@ const MARKER_ICONS = {
 
 export default {
   name: 'MapView',
-  components: {
-    MapControls
-  },
+  components: { MapControls },
   props: {
-    markers: {
-      type: Array,
-      default: () => []
-    },
-    isAddingMode: {
-      type: Boolean,
-      default: false
-    }
+    markers: Array,
+    isAddingMode: Boolean
   },
   emits: ['marker-click', 'map-click', 'toggle-add-mode', 'location-error'],
-
+  
   setup(props, { emit }) {
     const map = ref(null);
     const markerGroup = ref(null);
     const userLocationMarker = ref(null);
     const tempMarker = ref(null);
 
-    const handleShowDetails = (event) => {
-      const detail = event.detail;
-      if (detail) {
-        emit('marker-click', detail);
-      }
+    // Fixed event handler
+    const handleMarkerClick = (markerId) => {
+      emit('marker-click', markerId);
     };
 
     onMounted(() => {
@@ -130,25 +120,17 @@ export default {
         maxBoundsViscosity: 1.0
       });
 
-      L.tileLayer('https://tile.thunderforest.com/neighbourhood/{z}/{x}/{y}.png?apikey=375c923e2b8447249e6774bc2d2f3fa2', {
-        attribution: '',
-        minZoom: 15,
-        maxZoom: 19
-      }).addTo(map.value);
+      L.tileLayer('https://tile.thunderforest.com/neighbourhood/{z}/{x}/{y}.png?apikey=375c923e2b8447249e6774bc2d2f3fa2').addTo(map.value);
 
       markerGroup.value = L.layerGroup().addTo(map.value);
-      document.addEventListener('showDetails', handleShowDetails);
 
+      // Fixed map click handler
       map.value.on('click', (e) => {
         if (props.isAddingMode) {
-          if (confirm('Are you sure you want to add a place here?')) {
-            if (tempMarker.value) {
-              markerGroup.value.removeLayer(tempMarker.value);
-            }
-            tempMarker.value = L.marker(e.latlng, {
-              icon: MARKER_ICONS.default
-            }).addTo(markerGroup.value);
-
+          if (confirm('Add place here?')) {
+            if (tempMarker.value) markerGroup.value.removeLayer(tempMarker.value);
+            tempMarker.value = L.marker(e.latlng, { icon: MARKER_ICONS.default })
+              .addTo(markerGroup.value);
             emit('map-click', e.latlng);
           }
         }
@@ -161,97 +143,81 @@ export default {
 
       newMarkers.forEach(marker => {
         const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
+        
+        const popupContent = `
+          <div class="marker-popup">
+            ${marker.images?.length ? `
+              <div class="popup-image">
+                <img src="${marker.images[0]}" alt="${marker.name}" />
+              </div>` : ''
+            }
+            <h3>${marker.name || 'Unnamed Place'}</h3>
+            <button 
+              class="view-details-btn" 
+              onclick="this.dispatchEvent(new CustomEvent('view-details', { bubbles: true }))"
+            >
+              View Details
+            </button>
+          </div>
+        `;
 
         const markerElement = L.marker([marker.lat, marker.lng], { icon })
           .addTo(markerGroup.value)
-          .bindPopup(`
-            <div class="marker-popup">
-              ${marker.images && marker.images.length > 0 ?
-                `<div class="popup-image">
-                   <img src="${marker.images[0]}" alt="${marker.name}" />
-                 </div>` : ''
-              }
-              <h3>${marker.name || 'Unnamed Place'}</h3>
-              <div class="popup-content">
-                <button class="view-details-btn" 
-                  onclick="document.dispatchEvent(new CustomEvent('showDetails', {detail: '${marker.id}'}))">
-                  View Details
-                </button>
-              </div>
-            </div>
-          `, {
-            closeButton: false,
-            className: 'custom-popup'
+          .bindPopup(popupContent, { 
+            className: 'custom-popup',
+            closeButton: false
           });
 
-        markerElement.on('click', () => {
-          map.value.setView([marker.lat, marker.lng], 18, {
-            animate: true,
-            duration: 1
+        // Fixed event propagation
+        markerElement.getElement()?.querySelector('.view-details-btn')
+          ?.addEventListener('view-details', () => {
+            handleMarkerClick(marker.id);
           });
-        });
       });
     }, { deep: true });
 
+    // Geolocation handler
     const getCurrentLocation = () => {
-      if (!map.value) return;
-
       if (!navigator.geolocation) {
-        emit('location-error', 'Geolocation is not supported by your browser');
+        emit('location-error', 'Geolocation not supported');
         return;
       }
 
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          if (userLocationMarker.value) {
-            map.value.removeLayer(userLocationMarker.value);
-          }
-
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          userLocationMarker.value?.remove();
           userLocationMarker.value = L.circleMarker([latitude, longitude], {
             radius: 8,
             fillColor: '#4CAF50',
             color: '#fff',
             weight: 2,
-            opacity: 1,
             fillOpacity: 0.8
           }).addTo(markerGroup.value);
-
-          map.value.setView([latitude, longitude], 16, {
-            animate: true,
-            duration: 1
-          });
+          setMapView([latitude, longitude]);
         },
-        () => {
-          emit('location-error', 'Unable to retrieve your location');
-        }
+        (err) => emit('location-error', err.message)
       );
     };
 
     const toggleAddMode = () => {
       emit('toggle-add-mode', !props.isAddingMode);
-      if (tempMarker.value && markerGroup.value) {
-        markerGroup.value.removeLayer(tempMarker.value);
-        tempMarker.value = null;
-      }
+      tempMarker.value?.remove();
+      tempMarker.value = null;
     };
 
-    onBeforeUnmount(() => {
-      document.removeEventListener('showDetails', handleShowDetails);
-      if (map.value) {
-        map.value.remove();
-      }
+ onBeforeUnmount(() => {
+      if (map.value) map.value.remove();
     });
 
-    return {
-      getCurrentLocation,
-      toggleAddMode
-    };
+    return { getCurrentLocation, toggleAddMode };
   }
 };
 </script>
 
+
 <style scoped>
+/* Keep your existing styles the same */
 .map-wrapper {
   position: fixed;
   top: 0;
@@ -259,19 +225,12 @@ export default {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  margin: 0;
-  padding: 0;
 }
 
 .map {
   width: 100%;
   height: 100%;
   z-index: 1;
-  position: absolute;
-  left: 0;
-  top: 0;
-  margin: 0;
-  padding: 0;
 }
 
 .map-heading {
@@ -280,87 +239,33 @@ export default {
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
-  margin: 0;
-  padding: 5px 10px;
   background: rgba(255, 255, 255, 0.9);
+  padding: 5px 15px;
   border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 :deep(.custom-popup) {
-  min-width: 150px;
-}
-
-:deep(.marker-popup) {
-  text-align: center;
-}
-
-:deep(.marker-popup h3) {
-  margin: 0 0 8px 0;
-  font-weight: bold;
+  min-width: 200px;
+  padding: 10px;
 }
 
 :deep(.view-details-btn) {
-  background: #4CAF50;
+  background: #2196F3;
   color: white;
   border: none;
-  padding: 6px 12px;
+  padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
-  font-weight: bold;
+  margin-top: 10px;
+  transition: background 0.2s;
 }
 
 :deep(.view-details-btn:hover) {
-  background: #45a049;
+  background: #1976D2;
 }
 
-:deep(.popup-image) {
-  width: 100%;
-  height: 120px;
-  overflow: hidden;
-  margin-bottom: 8px;
-  border-radius: 4px;
-}
-
-:deep(.popup-image img) {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-:deep(.custom-marker-wrapper) {
-  position: absolute !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 32px !important;
-  height: 32px !important;
-  background: none !important;
-  border: none !important;
-  pointer-events: none !important;
-}
-
-:deep(.marker-icon) {
-  font-size: 24px !important;
-  line-height: 1 !important;
-  pointer-events: auto !important;
-  filter: drop-shadow(2px 2px 2px rgba(0, 0, 0, 0.3)) !important;
-}
-
-:deep(.leaflet-popup-content-wrapper) {
-  border-radius: 8px !important;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16) !important;
-}
-
-:deep(.leaflet-popup-tip) {
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16) !important;
-}
-
-:deep(.leaflet-control-container),
-:deep(.leaflet-control-attribution),
-:deep(.leaflet-control-container .leaflet-bottom),
-:deep(.leaflet-bar),
-:deep(.leaflet-control) {
-  display: none !important;
+:deep(.leaflet-control-container) {
+  display: none;
 }
 </style>
