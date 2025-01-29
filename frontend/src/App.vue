@@ -122,7 +122,6 @@ export default {
     const mapRef = ref(null);
     const selectedCategory = ref(null);
 
-    // Computed properties
     const sortedPlaces = computed(() => {
       return [...markers.value]
         .filter(m => !selectedCategory.value || m.type === selectedCategory.value)
@@ -133,11 +132,6 @@ export default {
         }));
     });
 
-    const canDeletePlace = computed(() => {
-      return selectedMarker.value?.user_id === user.value?.id;
-    });
-
-    // Methods
     const loadPlaces = async () => {
       try {
         const { data, error } = await supabase
@@ -153,10 +147,9 @@ export default {
           lng: place.longitude,
           name: place.name,
           description: place.description,
-          votes: place.votes,
-          images: place.images,
-          comments: place.comments,
-          hasVoted: place.has_voted,
+          votes: place.votes || 0,
+          images: place.images || [],
+          comments: place.comments || [],
           lastEdited: place.last_edited,
           type: place.type || 'default',
           user_id: place.user_id
@@ -167,7 +160,29 @@ export default {
       }
     };
 
-  
+    const handlePlaceUpdate = async (updatedPlace) => {
+      try {
+        const index = markers.value.findIndex(p => p.id === updatedPlace.id);
+        if (index !== -1) {
+          markers.value[index] = { ...markers.value[index], ...updatedPlace };
+          await loadPlaces(); // Refresh data
+        }
+      } catch (error) {
+        console.error('Update error:', error);
+        alert('Failed to update place');
+      }
+    };
+
+    const handlePlaceDelete = async (placeId) => {
+      try {
+        markers.value = markers.value.filter(p => p.id !== placeId);
+        await loadPlaces(); // Refresh data
+      } catch (error) {
+        console.error('Delete error:', error);
+        alert('Failed to delete place');
+      }
+    };
+
     const handleLogout = async () => {
       await auth.signOut();
       user.value = null;
@@ -205,7 +220,11 @@ export default {
               name: 'New Place',
               latitude: latlng.lat,
               longitude: latlng.lng,
-              user_id: user.value.id
+              user_id: user.value.id,
+              votes: 0,
+              images: [],
+              comments: [],
+              type: 'default'
             }])
             .select()
             .single();
@@ -219,62 +238,59 @@ export default {
             name: data.name,
             user_id: data.user_id,
             votes: 0,
+            images: [],
+            comments: [],
             type: 'default'
           });
+          
           isAddingMode.value = false;
+          selectMarker(data.id);
         } catch (error) {
-          alert('Failed to add place: ' + error.message);
+          console.error('Add error:', error);
+          alert('Failed to add place');
         }
       }
     };
 
-  const toggleCategoryFilter = (category) => {
-  selectedCategory.value = selectedCategory.value === category ? null : category;
-};
-    // Auth Handlers
     const handleAuthSuccess = (userData) => {
       user.value = userData;
       showAuthModal.value = false;
       loadPlaces();
     };
 
-
-    // Lifecycle Hooks
     onMounted(async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         user.value = session.user;
-        loadPlaces();
+        await loadPlaces();
       }
     });
 
- return {
-  markers,
-  selectedMarker,
-  sortedPlaces,
-  isAddingMode,
-  showRanking,
-  showAuthModal,
-  user,
-  mapRef,
-  selectedCategory,
-  PLACE_TYPES,
-  canDeletePlace,
-  handleMarkerClick: selectMarker,
-  handleMapClick,
-  selectMarker,
-  toggleCategoryFilter,
-  selectAndCloseRanking,
-  handleAuthSuccess,
-  handleLogout,
-  handleLocationError: (err) => alert(err),
-  toggleRanking: () => showRanking.value = !showRanking.value,
-  toggleAddMode: (val) => isAddingMode.value = val,
-  closeDialog: () => selectedMarker.value = null
-};
+    return {
+      markers,
+      selectedMarker,
+      sortedPlaces,
+      isAddingMode,
+      showRanking,
+      showAuthModal,
+      user,
+      mapRef,
+      selectedCategory,
+      PLACE_TYPES,
+      handlePlaceUpdate,
+      handlePlaceDelete,
+      handleMapClick,
+      selectMarker,
+      handleAuthSuccess,
+      handleLogout,
+      selectAndCloseRanking,
+      handleLocationError: (err) => alert(err),
+      toggleRanking: () => showRanking.value = !showRanking.value,
+      toggleAddMode: (val) => isAddingMode.value = val,
+      closeDialog: () => selectedMarker.value = null
+    };
   }
-};
-</script>
+};</script>
 
 <style scoped>
 .app {
