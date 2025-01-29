@@ -17,8 +17,21 @@
     <div v-if="showRanking" class="ranking-overlay">
       <div class="ranking-content">
         <button @click="showRanking = false" class="close-button">×</button>
+        
+        <!-- Category Filter -->
+        <div class="category-filter">
+          <button 
+            v-for="category in categories" 
+            :key="category.value" 
+            @click="setCategoryFilter(category.value)"
+            :class="['category-button', { active: categoryFilter === category.value }]"
+          >
+            {{ category.emoji }} {{ category.label }}
+          </button>
+        </div>
+
         <div class="ranking-list">
-          <div v-for="place in sortedPlaces" :key="place.id" class="ranking-item">
+          <div v-for="place in filteredRanking" :key="place.id" class="ranking-item">
             <span class="rank-number">{{ place.rank }}</span>
             <div class="rank-details">
               <h3>{{ place.name }}</h3>
@@ -85,6 +98,20 @@ export default {
     const user = ref(null);
     const showAuthModal = ref(false);
     const mapRef = ref(null);
+    const categoryFilter = ref(null);
+
+    // Categories for filtering
+    const categories = ref([
+      { value: 'office', label: 'Office', emoji: '🏛️' },
+      { value: 'restaurant', label: 'Restaurant', emoji: '🥣' },
+      { value: 'shipping', label: 'Shipping', emoji: '📦' },
+      { value: 'laundry', label: 'Laundry', emoji: '👕' },
+      { value: 'church', label: 'Church', emoji: '⛪' },
+      { value: 'school', label: 'School', emoji: '🏢' },
+      { value: 'store', label: 'Store', emoji: '🏪' },
+      { value: 'barber', label: 'Barber', emoji: '✂️' },
+      { value: 'default', label: 'Other', emoji: '📍' }
+    ]);
 
     // Computed properties
     const sortedPlaces = computed(() => {
@@ -96,6 +123,11 @@ export default {
         }));
     });
 
+    const filteredRanking = computed(() => {
+      if (!categoryFilter.value) return sortedPlaces.value;
+      return sortedPlaces.value.filter(place => place.type === categoryFilter.value);
+    });
+
     const canDeletePlace = computed(() => {
       if (!selectedMarker.value || !user.value) return false;
       return selectedMarker.value.user_id === user.value.id;
@@ -104,24 +136,13 @@ export default {
     // Methods
     const loadPlaces = async () => {
       try {
-        console.log('Loading places...');
         const response = await supabase
           .from('places')
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (response.error) {
-          console.error('Supabase error:', response.error);
-          throw response.error;
-        }
+        if (response.error) throw response.error;
 
-        if (!response.data) {
-          console.log('No places found');
-          markers.value = [];
-          return;
-        }
-
-        console.log('Places loaded:', response.data);
         markers.value = response.data.map(place => ({
           id: place.id,
           lat: place.latitude || 0,
@@ -167,18 +188,8 @@ export default {
       showRanking.value = false;
     };
 
-    const toggleAddMode = (value) => {
-      isAddingMode.value = value;
-    };
-
     const selectMarker = (id) => {
       selectedMarker.value = markers.value.find((marker) => marker.id === id);
-      if (selectedMarker.value) {
-        mapRef.value?.setView([selectedMarker.value.lat, selectedMarker.value.lng], 18, {
-          animate: true,
-          duration: 1
-        });
-      }
     };
 
     const handleMapClick = async (latlng) => {
@@ -190,8 +201,6 @@ export default {
 
       if (isAddingMode.value) {
         try {
-          console.log('Adding place at:', latlng);
-          
           const newPlace = {
             name: 'New Place',
             latitude: latlng.lat,
@@ -207,10 +216,7 @@ export default {
             .select()
             .single();
 
-          if (error) {
-            console.error('Supabase error:', error);
-            throw error;
-          }
+          if (error) throw error;
 
           const newMarker = {
             id: data.id,
@@ -221,13 +227,12 @@ export default {
             votes: data.votes || 0,
             user_id: data.user_id
           };
-          
+
           markers.value.push(newMarker);
           selectedMarker.value = newMarker;
           isAddingMode.value = false;
-
         } catch (error) {
-          console.error('Error details:', error);
+          console.error('Error adding place:', error);
           alert('Failed to add place. Please try again.');
         }
       }
@@ -274,6 +279,11 @@ export default {
       selectedMarker.value = null;
     };
 
+    const setCategoryFilter = (category) => {
+      categoryFilter.value = categoryFilter.value === category ? null : category;
+    };
+
+    // Initialize
     onMounted(async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -283,8 +293,6 @@ export default {
         }
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('Auth event:', event);
-          
           if (event === 'SIGNED_IN') {
             user.value = session?.user || null;
             await loadPlaces();
@@ -299,7 +307,6 @@ export default {
         onBeforeUnmount(() => {
           subscription.unsubscribe();
         });
-
       } catch (error) {
         console.error('Auth setup error:', error);
       }
@@ -313,7 +320,10 @@ export default {
       user,
       showAuthModal,
       sortedPlaces,
+      filteredRanking,
       canDeletePlace,
+      categories,
+      categoryFilter,
       handleAuthSuccess,
       handleLogout,
       toggleRanking,
@@ -325,6 +335,7 @@ export default {
       handleLocationError,
       closeDialog: () => selectedMarker.value = null,
       handleDelete,
+      setCategoryFilter,
       mapRef,
     };
   }
@@ -344,13 +355,12 @@ export default {
 
 .ranking-button {
   background-color: white !important;
-  color: #333 !important; 
+  color: #333 !important;
   position: fixed;
   top: 10px;
   left: 10px;
   z-index: 1000;
   padding: 4px 8px;
-  background: white;
   border: none;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -419,6 +429,30 @@ export default {
 
 .ranking-content .close-button:hover {
   background: rgba(0, 0, 0, 0.2);
+}
+
+.category-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.category-button {
+  padding: 6px 12px;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.category-button.active {
+  background: #2196F3;
+  color: white;
 }
 
 .ranking-list {
