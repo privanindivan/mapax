@@ -1,9 +1,7 @@
 <template>
-  <div class="dialog-overlay" @click.self="closeDialog">
+  <div class="dialog-overlay">
     <div class="dialog-content">
-      <button @click="closeDialog" class="close-button">×</button>
-      
-      <!-- Delete Button -->
+      <button @click="$emit('close')" class="close-button">×</button>
       <button 
         v-if="canDelete" 
         @click="handleDelete" 
@@ -11,56 +9,40 @@
       >
         Delete
       </button>
-
-      <!-- Header Section -->
+      <!-- Title -->
       <div class="dialog-header">
         <input 
           v-if="isEditing" 
           v-model="editedPlace.name" 
           class="name-input"
-          @keyup.enter="saveEdits"
-        >
-        <h2 v-else class="place-name">{{ place.name || 'Unnamed Place' }}</h2>
+          @keyup.enter="toggleEdit"
+        />
+        <h2 v-else class="place-name">{{ place?.name || 'New Place' }}</h2>
       </div>
 
-      <!-- Images Section -->
+      <!-- Images Section First -->
       <div class="images-section">
-        <h3>({{ editedPlace.images?.length || 0 }}/3)</h3>
-        <div v-if="editedPlace.images?.length" class="image-grid">
+        <h3>({{ place?.images?.length || 0 }}/3)</h3>
+        <div v-if="(place?.images?.length || 0) > 0" class="image-grid">
           <div 
-            v-for="(image, index) in editedPlace.images" 
-            :key="index"
+            v-for="(image, index) in (place?.images || [])" 
+            :key="index" 
             class="image-container"
+            @click="showFullscreen(image)"
           >
-            <img 
-              :src="image" 
-              :alt="`Image ${index + 1}`" 
-              class="place-image"
-              @click="showFullscreen(image)"
-            >
-            <button 
-              v-if="isEditing"
-              @click="removeImage(index)"
-              class="remove-image"
-            >
-              ×
-            </button>
+            <img :src="image" :alt="'Image ' + (index + 1)" class="place-image" />
+            <button @click.stop="removeImage(index)" class="remove-image">×</button>
           </div>
         </div>
-        
-        <!-- Image Upload -->
-        <div v-if="isEditing && (editedPlace.images?.length || 0) < 3" class="upload-section">
+        <div v-if="(place?.images?.length || 0) < 3" class="upload-section">
           <input
             type="file"
             accept="image/*"
             @change="handleImageUpload"
             ref="fileInput"
             class="hidden"
-          >
-          <button 
-            @click="$refs.fileInput.click()"
-            class="add-image-button"
-          >
+          />
+          <button @click="$refs.fileInput.click()" class="add-image-button">
             Add Image
           </button>
         </div>
@@ -69,17 +51,17 @@
       <!-- Voting Section -->
       <div class="voting-section">
         <button 
-          @click="handleVote('down')"
+          @click="handleVote('down')" 
           :class="['vote-button', { active: hasVoted === 'down' }]"
-          :disabled="place.hasVoted"
+          :disabled="place?.hasVoted"
         >
           ▼
         </button>
-        <span class="vote-count">{{ editedPlace.votes || 0 }}</span>
+        <span class="vote-count">{{ place?.votes || 0 }}</span>
         <button 
-          @click="handleVote('up')"
+          @click="handleVote('up')" 
           :class="['vote-button', { active: hasVoted === 'up' }]"
-          :disabled="place.hasVoted"
+          :disabled="place?.hasVoted"
         >
           ▲
         </button>
@@ -88,68 +70,43 @@
       <!-- Tabs -->
       <div class="tabs">
         <button 
-          :class="['tab-button', { active: activeTab === 'details' }]"
+          :class="['tab-button', { active: activeTab === 'details' }]" 
           @click="activeTab = 'details'"
         >
           Details
         </button>
         <button 
-          :class="['tab-button', { active: activeTab === 'comments' }]"
+          :class="['tab-button', { active: activeTab === 'comments' }]" 
           @click="activeTab = 'comments'"
         >
           Comments
         </button>
       </div>
 
-      <!-- Details Tab -->
-      <div v-show="activeTab === 'details'" class="tab-content">
+      <!-- Details Tab Content -->
+      <div v-if="activeTab === 'details'" class="tab-content">
         <div class="description-section">
-          <!-- Type Selector -->
-          <div v-if="isEditing" class="type-selector">
-            <label>Category:</label>
-            <select v-model="editedPlace.type" class="type-select">
-              <option 
-                v-for="type in PLACE_TYPES" 
-                :key="type.value" 
-                :value="type.value"
-              >
-                {{ type.label }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Description Editor -->
           <textarea
             v-if="isEditing"
             v-model="editedPlace.description"
             class="description-input"
             rows="4"
-            placeholder="Add description..."
+            placeholder="Add description here..."
           ></textarea>
-          <p v-else class="description-text">
-            {{ editedPlace.description || 'No description available' }}
-          </p>
-
-          <!-- Edit/Save Button -->
-          <button 
-            v-if="canEdit"
-            @click="toggleEdit"
-            class="edit-button"
-          >
+          <p v-else class="description-text">{{ place?.description || 'Add description here...' }}</p>
+          <button @click="toggleEdit" class="edit-button">
             {{ isEditing ? 'Save' : 'Edit' }}
           </button>
         </div>
 
-        <!-- Metadata -->
         <div class="metadata-section">
-          <p class="last-edited">
-            Last edited: {{ formattedLastEdited }}
-          </p>
+          <p class="last-edited">{{ formatDate(place?.lastEdited) }}</p>
+          <p class="contact-info">pm for issue ronlim016@gmail.com</p>
         </div>
       </div>
 
-      <!-- Comments Tab -->
-      <div v-show="activeTab === 'comments'" class="tab-content">
+      <!-- Comments Tab Content -->
+      <div v-if="activeTab === 'comments'" class="tab-content">
         <div class="comments-section">
           <textarea
             v-model="newComment"
@@ -157,222 +114,181 @@
             placeholder="Add a comment..."
             rows="3"
           ></textarea>
-          <button 
-            @click="addComment"
-            class="add-comment-button"
-            :disabled="!newComment.trim()"
-          >
-            Post Comment
+          <button @click="addComment" class="add-comment-button">
+            Add Comment
           </button>
 
           <div class="comments-list">
-            <div 
-              v-for="comment in editedPlace.comments" 
-              :key="comment.id" 
-              class="comment"
-            >
+            <div v-for="comment in (place?.comments || [])" :key="comment.id" class="comment">
               <p class="comment-text">{{ comment.text }}</p>
-              <p class="comment-date">{{ formatDate(comment.date) }}</p>
+              <p class="comment-date">{{ comment.date }}</p>
             </div>
           </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Fullscreen Image -->
-    <div 
-      v-if="fullscreenImage" 
-      class="fullscreen-overlay" 
-      @click="closeFullscreen"
-    >
-      <img :src="fullscreenImage" class="fullscreen-image">
-    </div>
+  <!-- Fullscreen Image Modal -->
+  <div v-if="fullscreenImage" class="fullscreen-overlay" @click="closeFullscreen">
+    <img :src="fullscreenImage" alt="Fullscreen view" class="fullscreen-image" />
   </div>
 </template>
 
 <script>
-import { ref, reactive, watch, computed } from 'vue';
+import { ref, reactive, watch,computed } from 'vue';
 import { supabase } from '../services/supabase';
-
 export default {
   name: 'PlaceDetailsDialog',
   props: {
-    place: { type: Object, required: true },
-    canEdit: { type: Boolean, default: false },
-    canDelete: { type: Boolean, default: false }
+    place: {
+      type: Object,
+      required: true
+    }
   },
-  emits: ['close', 'update', 'delete'],
+  emits: ['close', 'update','delete'],
   setup(props, { emit }) {
-    // State management
     const isEditing = ref(false);
-    const activeTab = ref('details');
     const hasVoted = ref(null);
+    const activeTab = ref('details');
     const newComment = ref('');
-    const fullscreenImage = ref(null);
     const editedPlace = reactive({ ...props.place });
-    const PLACE_TYPES = [
-      { value: 'office', label: '🏛️ Office' },
-      { value: 'building', label: '🏢 Building' },
-      { value: 'restaurant', label: '🥣 Restaurant' },
-      { value: 'shipping', label: '📦 Shipping' },
-      { value: 'laundry', label: '👕 Laundry' },
-      { value: 'church', label: '⛪ Church' },
-      { value: 'store', label: '🏪 Store' },
-      { value: 'barber', label: '✂️ Barber' }
-    ];
+    const user = ref(null);
+    const fullscreenImage = ref(null);
 
-    // Watchers
     watch(() => props.place, (newPlace) => {
       Object.assign(editedPlace, newPlace);
+    }, { deep: true });
+
+    const getUser = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      user.value = currentUser;
+    };
+    
+    getUser();
+
+    const canDelete = computed(() => {
+      if (!props.place || !user.value) return false;
+      const isOwner = props.place.user_id === user.value.id;
+      const isAdmin = user.value.email === 'your-admin-email@example.com'; // Replace with actual admin email
+      return isOwner || isAdmin;
     });
 
-    // Computed properties
-    const formattedLastEdited = computed(() => {
-      return new Date(editedPlace.lastEdited).toLocaleString();
-    });
+    const handleDelete = async () => {
+      if (!canDelete.value) {
+        alert('You do not have permission to delete this place');
+        return;
+      }
 
-    // Methods
-    const toggleEdit = async () => {
-      if (isEditing.value) {
+      if (confirm('Are you sure you want to delete this place?')) {
         try {
           const { error } = await supabase
             .from('places')
-            .update({
-              name: editedPlace.name,
-              description: editedPlace.description,
-              type: editedPlace.type,
-              images: editedPlace.images,
-              last_edited: new Date().toISOString()
-            })
-            .eq('id', editedPlace.id);
+            .delete()
+            .eq('id', props.place.id);
 
           if (error) throw error;
-          emit('update', editedPlace);
+          emit('delete', props.place.id);
+          emit('close');
         } catch (error) {
-          console.error('Update error:', error);
-          alert('Failed to save changes');
+          console.error('Error deleting place:', error);
+          alert('Failed to delete place');
         }
+      }
+    };
+
+    const formatDate = (dateString) => {
+      if (!dateString) return 'Not edited yet';
+      return new Date(dateString).toLocaleDateString();
+    };
+
+    const handleVote = (type) => {
+      if (props.place?.hasVoted) return;
+
+      const updatedPlace = { ...props.place };
+      const voteChange = type === 'up' ? 1 : -1;
+      updatedPlace.votes = (updatedPlace.votes || 0) + voteChange;
+      updatedPlace.hasVoted = true;
+      hasVoted.value = type;
+      emit('update', updatedPlace);
+    };
+
+    const toggleEdit = () => {
+      if (isEditing.value) {
+        emit('update', editedPlace);
       }
       isEditing.value = !isEditing.value;
     };
 
-    const handleVote = async (direction) => {
-      try {
-        const voteChange = direction === 'up' ? 1 : -1;
-        const newVotes = editedPlace.votes + voteChange;
-        
-        const { error } = await supabase
-          .from('places')
-          .update({ 
-            votes: newVotes,
-            has_voted: true 
-          })
-          .eq('id', editedPlace.id);
-
-        if (error) throw error;
-        
-        editedPlace.votes = newVotes;
-        editedPlace.hasVoted = true;
-        hasVoted.value = direction;
-        emit('update', editedPlace);
-      } catch (error) {
-        console.error('Voting error:', error);
-        alert('Voting failed');
-      }
-    };
-
-    const handleDelete = async () => {
-      if (!confirm('Permanently delete this place?')) return;
-      
-      try {
-        const { error } = await supabase
-          .from('places')
-          .delete()
-          .eq('id', editedPlace.id);
-
-        if (error) throw error;
-        emit('delete', editedPlace.id);
-        closeDialog();
-      } catch (error) {
-        console.error('Delete error:', error);
-        alert('Deletion failed');
-      }
-    };
-
     const handleImageUpload = (event) => {
       const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        editedPlace.images = [...editedPlace.images, e.target.result];
-        emit('update', editedPlace);
-      };
-      reader.readAsDataURL(file);
+      if (file && (props.place?.images?.length || 0) < 3) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const updatedPlace = { 
+            ...props.place,
+            images: [...(props.place?.images || []), e.target.result]
+          };
+          emit('update', updatedPlace);
+        };
+        reader.readAsDataURL(file);
+      }
     };
 
     const removeImage = (index) => {
-      editedPlace.images.splice(index, 1);
-      emit('update', editedPlace);
+      const updatedImages = [...(props.place?.images || [])];
+      updatedImages.splice(index, 1);
+      emit('update', { ...props.place, images: updatedImages });
     };
 
-    const addComment = async () => {
+    const addComment = () => {
       if (!newComment.value.trim()) return;
+      
+      const comment = {
+        id: Date.now(),
+        text: newComment.value.trim(),
+        date: new Date().toLocaleString()
+      };
 
-      try {
-        const comment = {
-          text: newComment.value.trim(),
-          date: new Date().toISOString(),
-          user_id: (await supabase.auth.getUser()).data.user.id
-        };
+      const updatedPlace = {
+        ...props.place,
+        comments: [...(props.place?.comments || []), comment]
+      };
 
-        const { error } = await supabase
-          .from('places')
-          .update({
-            comments: [...editedPlace.comments, comment]
-          })
-          .eq('id', editedPlace.id);
-
-        if (error) throw error;
-
-        editedPlace.comments.push(comment);
-        newComment.value = '';
-        emit('update', editedPlace);
-      } catch (error) {
-        console.error('Comment error:', error);
-        alert('Failed to add comment');
-      }
+      emit('update', updatedPlace);
+      newComment.value = '';
     };
 
-    // Helper methods
-    const closeDialog = () => emit('close');
-    const showFullscreen = (img) => fullscreenImage.value = img;
-    const closeFullscreen = () => fullscreenImage.value = null;
-    const formatDate = (dateString) => new Date(dateString).toLocaleDateString();
+    const showFullscreen = (image) => {
+      fullscreenImage.value = image;
+    };
+
+    const closeFullscreen = () => {
+      fullscreenImage.value = null;
+    };
 
     return {
       isEditing,
-      activeTab,
       editedPlace,
-      PLACE_TYPES,
-      newComment,
       hasVoted,
-      fullscreenImage,
-      formattedLastEdited,
-      toggleEdit,
-      handleVote,
+      activeTab,
+      newComment,
+      canDelete,
       handleDelete,
+      formatDate,
+      handleVote,
+      toggleEdit,
       handleImageUpload,
       removeImage,
       addComment,
-      closeDialog,
+      fullscreenImage,
       showFullscreen,
-      closeFullscreen,
-      formatDate
+      closeFullscreen
     };
   }
 };
 </script>
+
 <style scoped>
 .delete-button {
   position: absolute;
@@ -677,29 +593,4 @@ export default {
   font-size: 12px;
   color: #666;
 }
-
-.type-select {
-  width: 100%;
-  padding: 8px;
-  margin-top: 5px;
-}
 </style>
-
-.hidden { display: none; }
-.fullscreen-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.9);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.fullscreen-image {
-  max-width: 90vw;
-  max-height: 90vh;
-  object-fit: contain;
-}
