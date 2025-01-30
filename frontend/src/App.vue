@@ -160,18 +160,18 @@ export default {
       }
     };
 
-    const handlePlaceUpdate = async (updatedPlace) => {
-      try {
-        const index = markers.value.findIndex(p => p.id === updatedPlace.id);
-        if (index !== -1) {
-          markers.value[index] = { ...markers.value[index], ...updatedPlace };
-          await loadPlaces(); // Refresh data
-        }
-      } catch (error) {
-        console.error('Update error:', error);
-        alert('Failed to update place');
-      }
-    };
+   const handlePlaceUpdate = async (updatedPlace) => {
+  try {
+    const index = markers.value.findIndex(p => p.id === updatedPlace.id);
+    if (index !== -1) {
+      markers.value[index] = { ...markers.value[index], ...updatedPlace };
+      markers.value = [...markers.value]; // Force reactivity
+    }
+  } catch (error) {
+    console.error('Update error:', error);
+    alert('Failed to update place');
+  }
+};
 
     const handlePlaceDelete = async (placeId) => {
       try {
