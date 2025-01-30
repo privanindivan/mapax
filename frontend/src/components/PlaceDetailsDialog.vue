@@ -4,11 +4,11 @@
       <button @click="closeDialog" class="close-button">×</button>
       
       <!-- Delete Button -->
-      <button 
-        v-if="canDelete" 
-        @click="handleDelete" 
-        class="delete-button"
-      >
+ <button 
+  v-if="canDelete && user?.id === editedPlace.user_id" 
+  @click="handleDelete" 
+  class="delete-button"
+>
         Delete
       </button>
 
@@ -217,12 +217,13 @@ export default {
     });
 
     // Computed
-    const formattedLastEdited = computed(() => {
-      return editedPlace.last_edited 
-        ? new Date(editedPlace.last_edited).toLocaleString()
-        : 'Not edited';
-    });
-
+const formattedLastEdited = computed(() => {
+  if (!editedPlace.last_edited) return 'Not edited';
+  
+  // Use explicit date formatting
+  const date = new Date(editedPlace.last_edited);
+  return date.toLocaleString();
+});
     // Fixed function for editing
     const toggleEdit = async () => {
       if (isEditing.value) {
@@ -238,7 +239,7 @@ export default {
             .from('places')
             .update(updates)
             .eq('id', editedPlace.id);
-
+           .eq('user_id', user.value?.id);
           if (error) throw error;
 
           emit('update', { ...editedPlace, ...updates });
@@ -250,7 +251,32 @@ export default {
         isEditing.value = true;
       }
     };
+// Add this check for vote limiting
+const hasVoted = ref(false);
 
+const handleVote = async (direction) => {
+  if (hasVoted.value) {
+    alert('You can only vote once');
+    return;
+  }
+
+  try {
+    const voteValue = direction === 'up' ? 1 : -1;
+    const { data, error } = await supabase
+      .from('places')
+      .update({ votes: editedPlace.votes + voteValue })
+      .eq('id', editedPlace.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    editedPlace.votes = data.votes;
+    hasVoted.value = true;
+    emit('update', editedPlace);
+  } catch (error) {
+    alert('Failed to vote');
+  }
+};
     // Fixed voting function
     const handleVote = async (direction) => {
       try {
@@ -293,39 +319,44 @@ export default {
     };
 
     // Fixed image upload
-    const handleImageUpload = async (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-      
-      if (file.size > 5000000) {
-        alert('Image too large. Maximum size is 5MB.');
-        return;
-      }
+   const handleImageUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  console.log('File selected:', file); // Debug log
+  
+  try {
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
-      try {
-        const base64 = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result);
-          reader.readAsDataURL(file);
-        });
+    console.log('Base64 created'); // Debug log
+    
+    const updatedImages = [...(editedPlace.images || []), base64].slice(-3);
+    
+    const { error } = await supabase
+      .from('places')
+      .update({ 
+        images: updatedImages,
+        last_edited: new Date().toISOString()
+      })
+      .eq('id', editedPlace.id);
 
-        const updatedImages = [...(editedPlace.images || []), base64].slice(-3);
-
-        const { error } = await supabase
-          .from('places')
-          .update({ images: updatedImages })
-          .eq('id', editedPlace.id);
-
-        if (error) throw error;
-        
-        editedPlace.images = updatedImages;
-        emit('update', editedPlace);
-      } catch (error) {
-        alert('Failed to upload image');
-      } finally {
-        if (fileInput.value) fileInput.value.value = '';
-      }
-    };
+    if (error) throw error;
+    
+    editedPlace.images = updatedImages;
+    emit('update', { ...editedPlace });
+  } catch (error) {
+    console.error('Image upload error:', error);
+    alert('Failed to upload image');
+  } finally {
+    if (fileInput.value) {
+      fileInput.value.value = ''; // Reset file input
+    }
+};
 
     // Fixed image removal
     const removeImage = async (index) => {
