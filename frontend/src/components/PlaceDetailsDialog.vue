@@ -217,58 +217,63 @@ export default {
     })
 
     const formattedLastEdited = computed(() => {
-      if (!editedPlace.last_edited) return 'Not edited'
-      return new Date(editedPlace.last_edited).toLocaleString()
-    })
+  if (!editedPlace.last_edited || editedPlace.last_edited === 'Not edited') {
+    return 'Not edited';
+  }
+  try {
+    return new Date(editedPlace.last_edited).toLocaleString();
+  } catch (error) {
+    return 'Not edited';
+  }
+});
 
-    const toggleEdit = async () => {
-      if (isEditing.value) {
-        try {
-          const updates = {
-            name: editedPlace.name,
-            description: editedPlace.description,
-            type: editedPlace.type,
-            last_edited: new Date().toISOString()
-          }
-          const { error } = await supabase
-            .from('places')
-            .update(updates)
-            .eq('id', editedPlace.id)
+  const toggleEdit = async () => {
+  if (isEditing.value) {
+    try {
+      const updates = {
+        name: editedPlace.name,
+        description: editedPlace.description,
+        type: editedPlace.type,
+        last_edited: new Date().toISOString(),
+        user_id: props.place.user_id // Keep the original user_id
+      };
 
-          if (error) throw error
-          emit('update', { ...editedPlace, ...updates })
-          isEditing.value = false
-        } catch (error) {
-          alert('Failed to save changes')
-        }
-      } else {
-        isEditing.value = true
-      }
+      const { error } = await supabase
+        .from('places')
+        .update(updates)
+        .eq('id', editedPlace.id)
+        .eq('user_id', props.place.user_id); // Add this check
+
+      if (error) throw error;
+      emit('update', { ...editedPlace, ...updates });
+      isEditing.value = false;
+    } catch (error) {
+      alert('Only the creator can edit this place');
     }
+  } else {
+    isEditing.value = true;
+  }
+};
 
-    const handleVote = async (direction) => {
-      if (hasVoted.value) {
-        alert('You can only vote once')
-        return
-      }
-      try {
-        const voteValue = direction === 'up' ? 1 : -1
-        const { data, error } = await supabase
-          .from('places')
-          .update({ votes: (editedPlace.votes || 0) + voteValue })
-          .eq('id', editedPlace.id)
-          .select()
-          .single()
+  const handleVote = async (direction) => {
+  try {
+    const voteValue = direction === 'up' ? 1 : -1;
+    const { data, error } = await supabase
+      .from('places')
+      .update({ votes: (editedPlace.votes || 0) + voteValue })
+      .eq('id', editedPlace.id)
+      .select();
 
-        if (error) throw error
-        editedPlace.votes = data.votes
-        hasVoted.value = true
-        emit('update', editedPlace)
-      } catch (error) {
-        alert('Failed to vote')
-      }
+    if (error) throw error;
+    if (data && data[0]) {
+      editedPlace.votes = data[0].votes;
+      emit('update', editedPlace);
     }
-
+  } catch (error) {
+    console.error('Vote error:', error);
+    alert('Failed to vote');
+  }
+};
     const handleDelete = async () => {
       if (!confirm('Are you sure you want to delete this place?')) return
       try {
