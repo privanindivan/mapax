@@ -31,15 +31,35 @@ export default {
 
 <style scoped>
 .map-controls {
-  position: absolute;
-  bottom: 40px;
+  position: fixed; /* Change to fixed instead of absolute */
+  bottom: env(safe-area-inset-bottom, 20px); 
   right: 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   z-index: 1000;
+  padding: 10px; /* Add padding for better touch area */
 }
 
+/* Add media queries for mobile responsiveness */
+@media screen and (max-width: 768px) {
+  .map-controls {
+    bottom: env(safe-area-inset-bottom, 40px);
+    right: 50%;
+    transform: translateX(50%); /* Center horizontally */
+    flex-direction: row; /* Buttons side by side on mobile */
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 25px;
+    padding: 8px 16px;
+  }
+
+  .control-button {
+    width: 45px; /* Slightly bigger for mobile touch */
+    height: 45px;
+  }
+}
+
+/* Keep your existing button styles */
 .control-button {
   width: 40px;
   height: 40px;
