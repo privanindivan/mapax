@@ -210,21 +210,20 @@ export default {
     const fullscreenImage = ref(null);
     const fileInput = ref(null);
     const editedPlace = reactive({ ...props.place });
+    const hasVoted = ref(false);
 
     // Watchers
     watch(() => props.place, (newPlace) => {
       Object.assign(editedPlace, newPlace);
     });
 
-    // Computed
-const formattedLastEdited = computed(() => {
-  if (!editedPlace.last_edited) return 'Not edited';
-  
-  // Use explicit date formatting
-  const date = new Date(editedPlace.last_edited);
-  return date.toLocaleString();
-});
-    // Fixed function for editing
+    // Computed properties
+    const formattedLastEdited = computed(() => {
+      if (!editedPlace.last_edited) return 'Not edited';
+      const date = new Date(editedPlace.last_edited);
+      return date.toLocaleString();
+    });
+
     const toggleEdit = async () => {
       if (isEditing.value) {
         try {
@@ -239,7 +238,7 @@ const formattedLastEdited = computed(() => {
             .from('places')
             .update(updates)
             .eq('id', editedPlace.id);
-           .eq('user_id', user.value?.id);
+
           if (error) throw error;
 
           emit('update', { ...editedPlace, ...updates });
@@ -251,55 +250,31 @@ const formattedLastEdited = computed(() => {
         isEditing.value = true;
       }
     };
-// Add this check for vote limiting
-const hasVoted = ref(false);
 
-const handleVote = async (direction) => {
-  if (hasVoted.value) {
-    alert('You can only vote once');
-    return;
-  }
-
-  try {
-    const voteValue = direction === 'up' ? 1 : -1;
-    const { data, error } = await supabase
-      .from('places')
-      .update({ votes: editedPlace.votes + voteValue })
-      .eq('id', editedPlace.id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    editedPlace.votes = data.votes;
-    hasVoted.value = true;
-    emit('update', editedPlace);
-  } catch (error) {
-    alert('Failed to vote');
-  }
-};
-    // Fixed voting function
     const handleVote = async (direction) => {
+      if (hasVoted.value) {
+        alert('You can only vote once');
+        return;
+      }
+
       try {
         const voteValue = direction === 'up' ? 1 : -1;
         const { data, error } = await supabase
           .from('places')
-          .update({ 
-            votes: (editedPlace.votes || 0) + voteValue 
-          })
+          .update({ votes: (editedPlace.votes || 0) + voteValue })
           .eq('id', editedPlace.id)
           .select()
           .single();
 
         if (error) throw error;
-        
         editedPlace.votes = data.votes;
+        hasVoted.value = true;
         emit('update', editedPlace);
       } catch (error) {
         alert('Failed to vote');
       }
     };
 
-    // Fixed delete function
     const handleDelete = async () => {
       if (!confirm('Are you sure you want to delete this place?')) return;
       
@@ -318,47 +293,46 @@ const handleVote = async (direction) => {
       }
     };
 
-    // Fixed image upload
-   const handleImageUpload = async (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  
-  console.log('File selected:', file); // Debug log
-  
-  try {
-    const base64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+    const handleImageUpload = async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      if (file.size > 5000000) {
+        alert('Image too large. Maximum size is 5MB.');
+        return;
+      }
+      
+      try {
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
 
-    console.log('Base64 created'); // Debug log
-    
-    const updatedImages = [...(editedPlace.images || []), base64].slice(-3);
-    
-    const { error } = await supabase
-      .from('places')
-      .update({ 
-        images: updatedImages,
-        last_edited: new Date().toISOString()
-      })
-      .eq('id', editedPlace.id);
+        const updatedImages = [...(editedPlace.images || []), base64].slice(-3);
+        
+        const { error } = await supabase
+          .from('places')
+          .update({ 
+            images: updatedImages,
+            last_edited: new Date().toISOString()
+          })
+          .eq('id', editedPlace.id);
 
-    if (error) throw error;
-    
-    editedPlace.images = updatedImages;
-    emit('update', { ...editedPlace });
-  } catch (error) {
-    console.error('Image upload error:', error);
-    alert('Failed to upload image');
-  } finally {
-    if (fileInput.value) {
-      fileInput.value.value = ''; // Reset file input
-    }
-};
+        if (error) throw error;
+        
+        editedPlace.images = updatedImages;
+        emit('update', { ...editedPlace });
+      } catch (error) {
+        console.error('Image upload error:', error);
+        alert('Failed to upload image');
+      } finally {
+        if (fileInput.value) {
+          fileInput.value.value = '';
+        }
+      }
+    };
 
-    // Fixed image removal
     const removeImage = async (index) => {
       try {
         const updatedImages = [...(editedPlace.images || [])];
@@ -378,7 +352,6 @@ const handleVote = async (direction) => {
       }
     };
 
-    // Fixed comment function
     const addComment = async () => {
       if (!newComment.value.trim()) return;
 
