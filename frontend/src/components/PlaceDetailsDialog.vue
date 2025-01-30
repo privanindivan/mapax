@@ -191,8 +191,8 @@
 </template>
 
 <script>
-import { ref, reactive, computed, watch } from 'vue';
-import { supabase } from '@/services/supabase';
+import { ref, reactive, computed, watch } from 'vue'
+import { supabase } from '../services/supabase'
 
 export default {
   name: 'PlaceDetailsDialog',
@@ -204,25 +204,22 @@ export default {
   emits: ['close', 'update', 'delete'],
   
   setup(props, { emit }) {
-    const isEditing = ref(false);
-    const activeTab = ref('details');
-    const newComment = ref('');
-    const fullscreenImage = ref(null);
-    const fileInput = ref(null);
-    const editedPlace = reactive({ ...props.place });
-    const hasVoted = ref(false);
+    const isEditing = ref(false)
+    const activeTab = ref('details')
+    const newComment = ref('')
+    const fullscreenImage = ref(null)
+    const fileInput = ref(null)
+    const editedPlace = reactive({ ...props.place })
+    const hasVoted = ref(false)
 
-    // Watchers
     watch(() => props.place, (newPlace) => {
-      Object.assign(editedPlace, newPlace);
-    });
+      Object.assign(editedPlace, newPlace)
+    })
 
-    // Computed properties
     const formattedLastEdited = computed(() => {
-      if (!editedPlace.last_edited) return 'Not edited';
-      const date = new Date(editedPlace.last_edited);
-      return date.toLocaleString();
-    });
+      if (!editedPlace.last_edited) return 'Not edited'
+      return new Date(editedPlace.last_edited).toLocaleString()
+    })
 
     const toggleEdit = async () => {
       if (isEditing.value) {
@@ -232,175 +229,140 @@ export default {
             description: editedPlace.description,
             type: editedPlace.type,
             last_edited: new Date().toISOString()
-          };
-
+          }
           const { error } = await supabase
             .from('places')
             .update(updates)
-            .eq('id', editedPlace.id);
+            .eq('id', editedPlace.id)
 
-          if (error) throw error;
-
-          emit('update', { ...editedPlace, ...updates });
-          isEditing.value = false;
+          if (error) throw error
+          emit('update', { ...editedPlace, ...updates })
+          isEditing.value = false
         } catch (error) {
-          alert('Failed to save changes');
+          alert('Failed to save changes')
         }
       } else {
-        isEditing.value = true;
+        isEditing.value = true
       }
-    };
+    }
 
     const handleVote = async (direction) => {
       if (hasVoted.value) {
-        alert('You can only vote once');
-        return;
+        alert('You can only vote once')
+        return
       }
-
       try {
-        const voteValue = direction === 'up' ? 1 : -1;
+        const voteValue = direction === 'up' ? 1 : -1
         const { data, error } = await supabase
           .from('places')
           .update({ votes: (editedPlace.votes || 0) + voteValue })
           .eq('id', editedPlace.id)
           .select()
-          .single();
+          .single()
 
-        if (error) throw error;
-        editedPlace.votes = data.votes;
-        hasVoted.value = true;
-        emit('update', editedPlace);
+        if (error) throw error
+        editedPlace.votes = data.votes
+        hasVoted.value = true
+        emit('update', editedPlace)
       } catch (error) {
-        alert('Failed to vote');
+        alert('Failed to vote')
       }
-    };
+    }
 
     const handleDelete = async () => {
-      if (!confirm('Are you sure you want to delete this place?')) return;
-      
+      if (!confirm('Are you sure you want to delete this place?')) return
       try {
         const { error } = await supabase
           .from('places')
           .delete()
-          .eq('id', editedPlace.id);
+          .eq('id', editedPlace.id)
 
-        if (error) throw error;
-        
-        emit('delete', editedPlace.id);
-        emit('close');
+        if (error) throw error
+        emit('delete', editedPlace.id)
+        emit('close')
       } catch (error) {
-        alert('Failed to delete place');
+        alert('Failed to delete place')
       }
-    };
+    }
 
     const handleImageUpload = async (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
+      const file = event.target.files[0]
+      if (!file) return
       
       if (file.size > 5000000) {
-        alert('Image too large. Maximum size is 5MB.');
-        return;
+        alert('Image too large. Maximum size is 5MB.')
+        return
       }
       
       try {
         const base64 = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(reader.result);
-          reader.readAsDataURL(file);
-        });
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.readAsDataURL(file)
+        })
 
-const handleImageUpload = async (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  
-  if (file.size > 5000000) {
-    alert('Image too large. Maximum size is 5MB.');
-    return;
-  }
-  
-  try {
-    const base64 = await new Promise((resolve) => {
-      const reader = new FileReader();
-      // Change this line to use the result directly
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(file);
-    });
+        const updatedImages = [...(editedPlace.images || []), base64].slice(-3)
+        
+        const { error } = await supabase
+          .from('places')
+          .update({ images: updatedImages })
+          .eq('id', editedPlace.id)
 
-    const updatedImages = [...(editedPlace.images || []), base64].slice(-3);
-    
-    const { error } = await supabase
-      .from('places')
-      .update({ 
-        images: updatedImages,
-        last_edited: new Date().toISOString()
-      })
-      .eq('id', editedPlace.id);
-
-    if (error) throw error;
-    
-    editedPlace.images = updatedImages;
-    emit('update', { ...editedPlace });
-  } catch (error) {
-    console.error('Image upload error:', error);
-    alert('Failed to upload image');
-  } finally {
-    if (fileInput.value) {
-      fileInput.value.value = '';
+        if (error) throw error
+        editedPlace.images = updatedImages
+        emit('update', { ...editedPlace })
+      } catch (error) {
+        alert('Failed to upload image')
+      } finally {
+        if (fileInput.value) fileInput.value.value = ''
+      }
     }
-  }
-};
 
     const removeImage = async (index) => {
       try {
-        const updatedImages = [...(editedPlace.images || [])];
-        updatedImages.splice(index, 1);
+        const updatedImages = [...(editedPlace.images || [])]
+        updatedImages.splice(index, 1)
 
         const { error } = await supabase
           .from('places')
           .update({ images: updatedImages })
-          .eq('id', editedPlace.id);
+          .eq('id', editedPlace.id)
 
-        if (error) throw error;
-
-        editedPlace.images = updatedImages;
-        emit('update', editedPlace);
+        if (error) throw error
+        editedPlace.images = updatedImages
+        emit('update', editedPlace)
       } catch (error) {
-        alert('Failed to remove image');
+        alert('Failed to remove image')
       }
-    };
+    }
 
     const addComment = async () => {
-      if (!newComment.value.trim()) return;
-
+      if (!newComment.value.trim()) return
       try {
         const comment = {
           id: Date.now(),
           text: newComment.value.trim(),
           date: new Date().toISOString()
-        };
-
-        const updatedComments = [...(editedPlace.comments || []), comment];
-
+        }
+        const updatedComments = [...(editedPlace.comments || []), comment]
         const { error } = await supabase
           .from('places')
           .update({ comments: updatedComments })
-          .eq('id', editedPlace.id);
+          .eq('id', editedPlace.id)
 
-        if (error) throw error;
-
-        editedPlace.comments = updatedComments;
-        newComment.value = '';
-        emit('update', editedPlace);
+        if (error) throw error
+        editedPlace.comments = updatedComments
+        newComment.value = ''
+        emit('update', editedPlace)
       } catch (error) {
-        alert('Failed to add comment');
+        alert('Failed to add comment')
       }
-    };
+    }
 
-    // Helper methods
-    const closeDialog = () => emit('close');
-    const showFullscreen = (img) => fullscreenImage.value = img;
-    const closeFullscreen = () => fullscreenImage.value = null;
-    const formatDate = (dateString) => new Date(dateString).toLocaleDateString();
+    const closeDialog = () => emit('close')
+    const showFullscreen = (img) => fullscreenImage.value = img
+    const closeFullscreen = () => fullscreenImage.value = null
+    const formatDate = (dateString) => new Date(dateString).toLocaleDateString()
 
     return {
       isEditing,
@@ -420,9 +382,9 @@ const handleImageUpload = async (event) => {
       showFullscreen,
       closeFullscreen,
       formatDate
-    };
+    }
   }
-};
+}
 </script>
 
 <style scoped>
