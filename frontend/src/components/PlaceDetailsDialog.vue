@@ -309,29 +309,46 @@ export default {
           reader.readAsDataURL(file);
         });
 
-        const updatedImages = [...(editedPlace.images || []), base64].slice(-3);
-        
-        const { error } = await supabase
-          .from('places')
-          .update({ 
-            images: updatedImages,
-            last_edited: new Date().toISOString()
-          })
-          .eq('id', editedPlace.id);
+const handleImageUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  if (file.size > 5000000) {
+    alert('Image too large. Maximum size is 5MB.');
+    return;
+  }
+  
+  try {
+    const base64 = await new Promise((resolve) => {
+      const reader = new FileReader();
+      // Change this line to use the result directly
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
 
-        if (error) throw error;
-        
-        editedPlace.images = updatedImages;
-        emit('update', { ...editedPlace });
-      } catch (error) {
-        console.error('Image upload error:', error);
-        alert('Failed to upload image');
-      } finally {
-        if (fileInput.value) {
-          fileInput.value.value = '';
-        }
-      }
-    };
+    const updatedImages = [...(editedPlace.images || []), base64].slice(-3);
+    
+    const { error } = await supabase
+      .from('places')
+      .update({ 
+        images: updatedImages,
+        last_edited: new Date().toISOString()
+      })
+      .eq('id', editedPlace.id);
+
+    if (error) throw error;
+    
+    editedPlace.images = updatedImages;
+    emit('update', { ...editedPlace });
+  } catch (error) {
+    console.error('Image upload error:', error);
+    alert('Failed to upload image');
+  } finally {
+    if (fileInput.value) {
+      fileInput.value.value = '';
+    }
+  }
+};
 
     const removeImage = async (index) => {
       try {
