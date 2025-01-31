@@ -272,7 +272,7 @@ export default {
         const updatedVotes = (editedPlace.votes || 0) + voteValue
         const updatedVotedUsers = [...(editedPlace.voted_users || []), user.value.id]
 
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('places')
           .update({ 
             votes: updatedVotes,
