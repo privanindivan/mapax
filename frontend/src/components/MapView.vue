@@ -1,4 +1,4 @@
-`<template>
+<template>
   <div class="map-wrapper">
     <h2 class="map-heading">MAPA</h2>
     <div id="map" class="map"></div>
@@ -125,10 +125,12 @@ export default {
       }
     };
 
-    const handleViewDetails = (e) => {
+   const handleViewDetails = (e) => {
       const marker = markersRef.value.get(e.detail);
       if (marker) {
         marker.openPopup();
+        const markerLatLng = marker.getLatLng();
+        setMapView(markerLatLng);
       }
       emit('marker-click', e.detail);
     };
@@ -157,12 +159,14 @@ export default {
       map.value.on('click', (e) => {
         if (props.isAddingMode) {
           if (confirm('Add place here?')) {
-            tempMarker.value?.remove();
-            tempMarker.value = L.marker(e.latlng, {
-              icon: MARKER_ICONS.default,
-              pane: 'markerPane'
+            if (tempMarker.value) {
+              markerGroup.value.removeLayer(tempMarker.value);
+            }
+            const fixedLatLng = L.latLng(e.latlng.lat, e.latlng.lng);
+            tempMarker.value = L.marker(fixedLatLng, {
+              icon: MARKER_ICONS.default
             }).addTo(markerGroup.value);
-            emit('map-click', e.latlng);
+            emit('map-click', fixedLatLng);
           }
         }
       });
@@ -175,33 +179,40 @@ export default {
 
       newMarkers.forEach(marker => {
         const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
+        const fixedLatLng = L.latLng(marker.lat, marker.lng);
         
-        const markerElement = L.marker([marker.lat, marker.lng], { 
+        const markerElement = L.marker(fixedLatLng, { 
           icon,
-          riseOnHover: true,
-          pane: 'markerPane'
+          riseOnHover: true
         }).addTo(markerGroup.value);
 
-        const popupContent = `
-          <div class="marker-popup">
-            ${marker.images?.length > 0 ? `
-              <div class="popup-image">
-                <img src="${marker.images[0]}" alt="${marker.name}" />
-              </div>` : ''}
-            <h3>${marker.name || 'Unnamed Place'}</h3>
-            <button onclick="window.dispatchEvent(new CustomEvent('viewDetails', {detail: '${marker.id}'}))" class="view-details-btn">
-              View Details
-            </button>
-          </div>
+        const popupContent = document.createElement('div');
+        popupContent.className = 'marker-popup';
+        popupContent.innerHTML = `
+          ${marker.images?.length > 0 ? `
+            <div class="popup-image">
+              <img src="${marker.images[0]}" alt="${marker.name}" />
+            </div>` : ''}
+          <h3>${marker.name || 'Unnamed Place'}</h3>
+          <button class="view-details-btn">
+            View Details
+          </button>
         `;
 
-        markerElement.bindPopup(popupContent, { 
+        const popup = L.popup({
           closeButton: false,
           className: 'custom-popup'
+        }).setContent(popupContent);
+
+        markerElement.bindPopup(popup);
+
+        // Add click handler for the view details button
+        popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
+          window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
         });
 
         markerElement.on('click', () => {
-          setMapView([marker.lat, marker.lng]);
+          setMapView(fixedLatLng);
         });
 
         markersRef.value.set(marker.id, markerElement);
