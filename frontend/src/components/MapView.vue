@@ -1,5 +1,4 @@
-
-<template>
+`<template>
   <div class="map-wrapper">
     <h2 class="map-heading">MAPA</h2>
     <div id="map" class="map"></div>
@@ -37,67 +36,67 @@ const GMA_COORDINATES = [14.293054, 121.005381];
 
 const MARKER_ICONS = {
   office: L.divIcon({
-    html: '<div class="marker-icon">🏛️</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
+    html: '🏛️',
+    className: 'custom-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   building: L.divIcon({
-    html: '<div class="marker-icon">🏢</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
+    html: '🏢',
+    className: 'custom-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   restaurant: L.divIcon({
-    html: '<div class="marker-icon">🥣</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
+    html: '🥣',
+    className: 'custom-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   shipping: L.divIcon({
-    html: '<div class="marker-icon">📦</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
+    html: '📦',
+    className: 'custom-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   laundry: L.divIcon({
-    html: '<div class="marker-icon">👕</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
+    html: '👕',
+    className: 'custom-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   church: L.divIcon({
-    html: '<div class="marker-icon">⛪</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
+    html: '⛪',
+    className: 'custom-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   store: L.divIcon({
-    html: '<div class="marker-icon">🏪</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
+    html: '🏪',
+    className: 'custom-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   barber: L.divIcon({
-    html: '<div class="marker-icon">✂️</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
+    html: '✂️',
+    className: 'custom-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   }),
   default: L.divIcon({
-    html: '<div class="marker-icon">📍</div>',
-    className: 'custom-marker-wrapper',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
+    html: '📍',
+    className: 'custom-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   })
 };
 
@@ -110,11 +109,12 @@ export default {
   },
   emits: ['marker-click', 'map-click', 'toggle-add-mode', 'location-error'],
   
- setup(props, { emit }) {
+  setup(props, { emit }) {
     const map = ref(null);
     const markerGroup = ref(null);
     const userLocationMarker = ref(null);
     const tempMarker = ref(null);
+    const markersRef = ref(new Map());
 
     const setMapView = (latlng, zoom = 18) => {
       if (map.value) {
@@ -126,6 +126,10 @@ export default {
     };
 
     const handleViewDetails = (e) => {
+      const marker = markersRef.value.get(e.detail);
+      if (marker) {
+        marker.openPopup();
+      }
       emit('marker-click', e.detail);
     };
 
@@ -155,7 +159,8 @@ export default {
           if (confirm('Add place here?')) {
             tempMarker.value?.remove();
             tempMarker.value = L.marker(e.latlng, {
-              icon: MARKER_ICONS.default
+              icon: MARKER_ICONS.default,
+              pane: 'markerPane'
             }).addTo(markerGroup.value);
             emit('map-click', e.latlng);
           }
@@ -163,44 +168,46 @@ export default {
       });
     });
 
-  watch(() => props.markers, (newMarkers) => {
-  if (!map.value || !markerGroup.value) return;
-  markerGroup.value.clearLayers();
+    watch(() => props.markers, (newMarkers) => {
+      if (!map.value || !markerGroup.value) return;
+      markerGroup.value.clearLayers();
+      markersRef.value.clear();
 
-  newMarkers.forEach(marker => {
-    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
-    
-    const markerElement = L.marker([marker.lat, marker.lng], { 
-      icon,
-      riseOnHover: true,
-      autoPan: true,           // Add this
-      autoPanOnFocus: true     // Add this
-    }).addTo(markerGroup.value);
+      newMarkers.forEach(marker => {
+        const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
+        
+        const markerElement = L.marker([marker.lat, marker.lng], { 
+          icon,
+          riseOnHover: true,
+          pane: 'markerPane'
+        }).addTo(markerGroup.value);
 
-    // Add this for immediate popup binding
-    const popupContent = `
-      <div class="marker-popup">
-        ${marker.images?.length > 0 ? `
-          <div class="popup-image">
-            <img src="${marker.images[0]}" alt="${marker.name}" />
-          </div>` : ''}
-        <h3>${marker.name || 'Unnamed Place'}</h3>
-        <button onclick="window.dispatchEvent(new CustomEvent('viewDetails', {detail: '${marker.id}'}))" class="view-details-btn">
-          View Details
-        </button>
-      </div>
-    `;
-    markerElement.bindPopup(popupContent, { 
-      closeButton: false,
-      className: 'custom-popup'
-    });
+        const popupContent = `
+          <div class="marker-popup">
+            ${marker.images?.length > 0 ? `
+              <div class="popup-image">
+                <img src="${marker.images[0]}" alt="${marker.name}" />
+              </div>` : ''}
+            <h3>${marker.name || 'Unnamed Place'}</h3>
+            <button onclick="window.dispatchEvent(new CustomEvent('viewDetails', {detail: '${marker.id}'}))" class="view-details-btn">
+              View Details
+            </button>
+          </div>
+        `;
 
-    if (tempMarker.value) {
-      tempMarker.value.options.autoPan = true;
-      tempMarker.value.options.autoPanOnFocus = true;
-    }
-  });
-}, { deep: true });
+        markerElement.bindPopup(popupContent, { 
+          closeButton: false,
+          className: 'custom-popup'
+        });
+
+        markerElement.on('click', () => {
+          setMapView([marker.lat, marker.lng]);
+        });
+
+        markersRef.value.set(marker.id, markerElement);
+      });
+    }, { deep: true });
+
     const getCurrentLocation = () => {
       if (!navigator.geolocation) {
         emit('location-error', 'Geolocation not supported');
@@ -241,40 +248,10 @@ export default {
       setMapView
     };
   }
-   };
+};
 </script>
 
-
 <style scoped>
-/* Fixed 8: Enhanced marker styling */
-:deep(.leaflet-marker-icon) {
-  transition: transform 0.2s;
-}
-
-:deep(.leaflet-marker-icon:hover) {
-  transform: scale(1.2);
-}
-
-:deep(.custom-popup) {
-  min-width: 200px;
-  padding: 10px;
-  font-family: Arial, sans-serif;
-}
-
-:deep(.view-details-btn) {
-  background: #2196F3;
-  color: white;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-top: 10px;
-  transition: background 0.2s;
-}
-
-:deep(.view-details-btn:hover) {
-  background: #1976D2;
-}
 .map-wrapper {
   position: fixed;
   top: 0;
@@ -327,7 +304,7 @@ export default {
 
 :deep(.view-details-btn) {
   background: #4CAF50;
-  color: white;
+  color: white !important;
   border: none;
   padding: 6px 12px;
   border-radius: 4px;
@@ -353,23 +330,17 @@ export default {
   object-fit: cover;
 }
 
-:deep(.custom-marker-wrapper) {
-  position: absolute !important;
+:deep(.custom-marker) {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 32px !important;
-  height: 32px !important;
+  font-size: 24px !important;
   background: none !important;
   border: none !important;
-  pointer-events: none !important;
-}
-
-:deep(.marker-icon) {
-  font-size: 24px !important;
-  line-height: 1 !important;
-  pointer-events: auto !important;
+  text-align: center !important;
+  transform: translateY(-50%) !important;
   filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.3)) !important;
+  z-index: 1000 !important;
 }
 
 :deep(.leaflet-popup-content-wrapper) {
@@ -388,4 +359,4 @@ export default {
 :deep(.leaflet-control) {
   display: none !important;
 }
-</style>
+</style>`
