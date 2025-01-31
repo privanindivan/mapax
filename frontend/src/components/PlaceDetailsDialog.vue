@@ -4,13 +4,15 @@
       <button @click="closeDialog" class="close-button">×</button>
       
       <!-- Delete Button -->
- <button 
-  v-if="canDelete && user?.id === editedPlace.user_id" 
+<!-- In template -->
+<button 
+  v-if="props.place.user_id === user?.id"  
   @click="handleDelete" 
   class="delete-button"
 >
-        Delete
-      </button>
+  Delete
+</button>
+        
 
       <!-- Header Section -->
       <div class="dialog-header">
@@ -214,22 +216,18 @@ export default {
    const fileInput = ref(null)
    const editedPlace = reactive({ ...props.place })
    const hasVoted = ref(false)
+const user = ref(supabase.auth.user())
 
    watch(() => props.place, (newPlace) => {
      Object.assign(editedPlace, newPlace)
    })
 
-   const formattedLastEdited = computed(() => {
-     if (!editedPlace.last_edited || editedPlace.last_edited === 'Not edited') {
-       return 'Not edited'
-     }
-     try {
-       return new Date(editedPlace.last_edited).toLocaleString()
-     } catch (error) {
-       return 'Not edited'
-     }
-   })
-
+const formattedLastEdited = computed(() => {
+  if (!editedPlace.last_edited) return 'Not edited'
+  const date = new Date(editedPlace.last_edited)
+  if (isNaN(date.getTime())) return 'Not edited'
+  return date.toLocaleString()
+})
    const toggleEdit = async () => {
      if (isEditing.value) {
        try {
@@ -256,29 +254,37 @@ export default {
      }
    }
 
-   const handleVote = async (direction) => {
-     if (hasVoted.value) {
-       alert('You can only vote once')
-       return
-     }
+  const handleVote = async (direction) => {
+  if (!user.value) {
+    alert('Please login to vote')
+    return
+  }
 
-     try {
-       const voteValue = direction === 'up' ? 1 : -1
-       const { data, error } = await supabase
-         .from('places')
-         .update({ votes: (editedPlace.votes || 0) + voteValue })
-         .eq('id', editedPlace.id)
-         .select()
-         .single()
+  if (editedPlace.voted_users?.includes(user.value.id)) {
+    alert('You have already voted')
+    return
+  }
 
-       if (error) throw error
-       editedPlace.votes = data.votes
-       hasVoted.value = true
-       emit('update', editedPlace)
-     } catch (error) {
-       alert('Failed to vote')
-     }
-   }
+  try {
+    const voteValue = direction === 'up' ? 1 : -1
+    const { data, error } = await supabase
+      .from('places')
+      .update({ 
+        votes: (editedPlace.votes || 0) + voteValue,
+        voted_users: [...(editedPlace.voted_users || []), user.value.id]
+      })
+      .eq('id', editedPlace.id)
+      .select()
+      .single()
+
+    if (error) throw error
+    editedPlace.votes = data.votes
+    editedPlace.voted_users = data.voted_users
+    emit('update', editedPlace)
+  } catch (error) {
+    alert('Failed to vote')
+  }
+}
 
    const handleDelete = async () => {
      if (!confirm('Are you sure you want to delete this place?')) return
