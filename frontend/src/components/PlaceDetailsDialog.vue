@@ -4,15 +4,13 @@
       <button @click="closeDialog" class="close-button">×</button>
       
       <!-- Delete Button -->
-<!-- In template -->
-<button 
-  v-if="props.place.user_id === user?.id"  
-  @click="handleDelete" 
-  class="delete-button"
->
-  Delete
-</button>
-        
+      <button 
+        v-if="user?.id === editedPlace.user_id"
+        @click="handleDelete" 
+        class="delete-button"
+      >
+        Delete
+      </button>
 
       <!-- Header Section -->
       <div class="dialog-header">
@@ -20,7 +18,7 @@
           v-if="isEditing" 
           v-model="editedPlace.name" 
           class="name-input"
-          @keyup.enter="saveEdits"
+          @keyup.enter="toggleEdit"
         >
         <h2 v-else class="place-name">{{ place.name || 'Unnamed Place' }}</h2>
       </div>
@@ -406,15 +404,25 @@ export default {
  emits: ['close', 'update', 'delete'],
  
  setup(props, { emit }) {
-   const isEditing = ref(false)
-   const activeTab = ref('details')
-   const newComment = ref('')
-   const fullscreenImage = ref(null)
-   const fileInput = ref(null)
-   const editedPlace = reactive({ ...props.place })
-   const hasVoted = ref(false)
-const user = ref(supabase.auth.user())
+    // Your existing setup code stays the same
+    const isEditing = ref(false)
+    const activeTab = ref('details')
+    const newComment = ref('')
+    const fullscreenImage = ref(null)
+    const fileInput = ref(null)
+    const editedPlace = reactive({ ...props.place })
+    const user = ref(null)
+    const hasVoted = ref(false)
 
+    // Initialize user and check vote status
+    onMounted(async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      user.value = session?.user || null
+      
+      if (user.value && editedPlace.voted_users) {
+        hasVoted.value = editedPlace.voted_users.includes(user.value.id)
+      }
+    })
    watch(() => props.place, (newPlace) => {
      Object.assign(editedPlace, newPlace)
    })
@@ -590,30 +598,30 @@ const formattedLastEdited = computed(() => {
    const closeFullscreen = () => fullscreenImage.value = null
    const formatDate = (dateString) => new Date(dateString).toLocaleDateString()
 
-   return {
-     isEditing,
-     activeTab,
-     editedPlace,
-     newComment,
-     fullscreenImage,
-     fileInput,
-     formattedLastEdited,
-     hasVoted,
-     toggleEdit,
-     handleVote,
-     handleDelete,
-     handleImageUpload,
-     removeImage,
-     addComment,
-     closeDialog,
-     showFullscreen,
-     closeFullscreen,
-     formatDate
-   }
- }
+  return {
+      isEditing,
+      activeTab,
+      editedPlace,
+      newComment,
+      fullscreenImage,
+      fileInput,
+      formattedLastEdited,
+      hasVoted,
+      user,
+      toggleEdit,
+      handleVote,
+      handleDelete,
+      handleImageUpload,
+      removeImage,
+      addComment,
+      closeDialog,
+      showFullscreen,
+      closeFullscreen,
+      formatDate
+    }
+  }
 }
 </script>
-
 <style scoped>
 .dialog-overlay {
   position: fixed;
