@@ -233,7 +233,6 @@ export default {
     const user = ref(null)
     const hasVoted = ref(false)
 
-    // Initialize user session
     onMounted(async () => {
       const { data: { session } } = await supabase.auth.getSession()
       user.value = session?.user || null
@@ -243,9 +242,11 @@ export default {
       }
     })
 
-    // Update editedPlace when props change
     watch(() => props.place, (newPlace) => {
       Object.assign(editedPlace, newPlace)
+      if (user.value && editedPlace.voted_users) {
+        hasVoted.value = editedPlace.voted_users.includes(user.value.id)
+      }
     })
 
     const formattedLastEdited = computed(() => {
@@ -255,130 +256,101 @@ export default {
       return date.toLocaleString()
     })
 
-  // Inside PlaceDetailsDialog.vue setup function
-
-const toggleEdit = async () => {
-  if (!user.value) {
-    alert('Please login to edit')
-    return
-  }
-
-  if (isEditing.value) {
-    try {
-      // Check if user owns the place
-      if (editedPlace.user_id !== user.value.id) {
-        throw new Error('Only the creator can edit this place')
+    const handleVote = async (direction) => {
+      if (!user.value) {
+        alert('Please login to vote')
+        return
       }
 
-      const updates = {
-        name: editedPlace.name,
-        description: editedPlace.description,
-        type: editedPlace.type,
-        last_edited: new Date().toISOString()
+      if (editedPlace.voted_users?.includes(user.value.id)) {
+        alert('You have already voted on this place')
+        return
       }
 
-      const { error } = await supabase
-        .from('places')
-        .update(updates)
-        .eq('id', editedPlace.id)
-        .eq('user_id', user.value.id) // Add user_id check
+      try {
+        const voteValue = direction === 'up' ? 1 : -1
+        const updatedVotes = (editedPlace.votes || 0) + voteValue
+        const updatedVotedUsers = [...(editedPlace.voted_users || []), user.value.id]
 
-      if (error) throw error
-      
-      const updatedPlace = {
-        ...editedPlace,
-        ...updates
+        const { data, error } = await supabase
+          .from('places')
+          .update({ 
+            votes: updatedVotes,
+            voted_users: updatedVotedUsers 
+          })
+          .eq('id', editedPlace.id)
+          .select('*')
+
+        if (error) throw error
+
+        editedPlace.votes = updatedVotes
+        editedPlace.voted_users = updatedVotedUsers
+        hasVoted.value = true
+        emit('update', { ...editedPlace })
+      } catch (error) {
+        console.error('Vote error:', error)
       }
-      
-      // Update both local state and emit update
-      Object.assign(editedPlace, updatedPlace)
-      emit('update', updatedPlace)
-      isEditing.value = false
-    } catch (error) {
-      console.error('Edit error:', error)
-      alert('Failed to save changes. Only the creator can edit.')
     }
-  } else {
-    if (editedPlace.user_id !== user.value.id) {
-      alert('Only the creator can edit this place')
-      return
+
+    const toggleEdit = async () => {
+      if (!user.value) {
+        alert('Please login to edit')
+        return
+      }
+
+      if (isEditing.value) {
+        try {
+          if (editedPlace.user_id !== user.value.id) {
+            throw new Error('Only the creator can edit this place')
+          }
+
+          const updates = {
+            name: editedPlace.name,
+            description: editedPlace.description,
+            type: editedPlace.type,
+            last_edited: new Date().toISOString()
+          }
+
+          const { error } = await supabase
+            .from('places')
+            .update(updates)
+            .eq('id', editedPlace.id)
+            .eq('user_id', user.value.id)
+
+          if (error) throw error
+          
+          const updatedPlace = {
+            ...editedPlace,
+            ...updates
+          }
+          
+          Object.assign(editedPlace, updatedPlace)
+          emit('update', updatedPlace)
+          isEditing.value = false
+        } catch (error) {
+          console.error('Edit error:', error)
+          alert('Failed to save changes. Only the creator can edit.')
+        }
+      } else {
+        if (editedPlace.user_id !== user.value.id) {
+          alert('Only the creator can edit this place')
+          return
+        }
+        isEditing.value = true
+      }
     }
-    isEditing.value = true
-  }
-}
-
-const handleVote = async (direction) => {
-  if (!user.value) {
-    alert('Please login to vote')
-    return
-  }
-
-  if (editedPlace.voted_users?.includes(user.value.id)) {
-    alert('You have already voted on this place')
-    return
-  }
-
-  try {
-    const voteValue = direction === 'up' ? 1 : -1
-    const updatedVotes = (editedPlace.votes || 0) + voteValue
-    const updatedVotedUsers = [...(editedPlace.voted_users || []), user.value.id]
-
-    const { data, error } = await supabase
-      .from('places')
-      .update({ 
-        votes: updatedVotes,
-        voted_users: updatedVotedUsers 
-      })
-      .eq('id', editedPlace.id)
-      .select('*')
-
-    if (error) throw error
-
-    editedPlace.votes = updatedVotes
-    editedPlace.voted_users = updatedVotedUsers
-    hasVoted.value = true
-    emit('update', { ...editedPlace })
-  } catch (error) {
-    console.error('Vote error:', error)
-  }
-}
-
-  // Check if user has already voted
-  const hasVoted = editedPlace.voted_users?.includes(user.value.id)
-  if (hasVoted) {
-    alert('You have already voted on this place')
-    return
-  }
-
-  try {
-    const voteValue = direction === 'up' ? 1 : -1
-    const updatedVotes = (editedPlace.votes || 0) + voteValue
-    const updatedVotedUsers = [...(editedPlace.voted_users || []), user.value.id]
-
-    const { data, error } = await supabase
-      .from('places')
-      .update({ 
-        votes: updatedVotes,
-        voted_users: updatedVotedUsers
-      })
-      .eq('id', editedPlace.id)
-      .select()
-      .single()
-
-    if (error) throw error
-
-    // Update both local state and emit update
-    editedPlace.votes = data.votes
-    editedPlace.voted_users = data.voted_users
-    hasVoted.value = true
-    emit('update', { ...editedPlace })
-  } catch (error) {
-    console.error('Vote error:', error)
-    alert('Failed to vote')
-  }
-}
 
     const handleDelete = async () => {
+      if (!user.value) {
+        alert('Please login to delete')
+        return
+      }
+
+      if (editedPlace.user_id !== user.value.id) {
+        alert('Only the creator can delete this place')
+        return
+      }
+
       if (!confirm('Are you sure you want to delete this place?')) return
       
       try {
@@ -386,6 +358,7 @@ const handleVote = async (direction) => {
           .from('places')
           .delete()
           .eq('id', editedPlace.id)
+          .eq('user_id', user.value.id)
 
         if (error) throw error
         emit('delete', editedPlace.id)
@@ -421,6 +394,7 @@ const handleVote = async (direction) => {
             last_edited: new Date().toISOString()
           })
           .eq('id', editedPlace.id)
+          .eq('user_id', user.value.id)
 
         if (error) throw error
         editedPlace.images = updatedImages
@@ -444,10 +418,11 @@ const handleVote = async (direction) => {
           .from('places')
           .update({ images: updatedImages })
           .eq('id', editedPlace.id)
+          .eq('user_id', user.value.id)
 
         if (error) throw error
         editedPlace.images = updatedImages
-        emit('update', { ...editedPlace })
+        emit('update', editedPlace)
       } catch (error) {
         console.error('Remove image error:', error)
         alert('Failed to remove image')
@@ -481,7 +456,7 @@ const handleVote = async (direction) => {
         if (error) throw error
         editedPlace.comments = updatedComments
         newComment.value = ''
-        emit('update', { ...editedPlace })
+        emit('update', editedPlace)
       } catch (error) {
         console.error('Comment error:', error)
         alert('Failed to add comment')
