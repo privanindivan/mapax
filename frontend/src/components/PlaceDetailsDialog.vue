@@ -13,17 +13,35 @@
         Delete
       </button>
 
-      <!-- Header Section -->
-      <div class="dialog-header">
-        <input 
-          v-if="isEditing" 
-          v-model="editedPlace.name" 
-          class="name-input"
-          @keyup.enter="toggleEdit"
-        >
-        <h2 v-else class="place-name">{{ place.name || 'Unnamed Place' }}</h2>
-      </div>
-
+      <!-- Header Section with character limit -->
+    <div class="dialog-header">
+    <input 
+      v-if="isEditing" 
+      v-model="editedPlace.name" 
+      class="name-input"
+      @keyup.enter="toggleEdit"
+      maxlength="50"
+      placeholder="Enter place name (max 50 characters)"
+    >
+    <h2 v-else class="place-name">{{ place.name || 'Unnamed Place' }}</h2>
+  </div>
+  <!-- Description with character limit -->
+  <textarea
+    v-if="isEditing"
+    v-model="editedPlace.description"
+    class="description-input"
+    rows="4"
+    maxlength="500"
+    placeholder="Add description... (max 500 characters)"
+  ></textarea>
+  <!-- Comment with character limit -->
+  <textarea
+    v-model="newComment"
+    class="comment-input"
+    placeholder="Add a comment... (max 200 characters)"
+    rows="3"
+    maxlength="200"
+  ></textarea>
       <!-- Images Section -->
       <div class="images-section">
         <h3>({{ editedPlace.images?.length || 0 }}/3)</h3>
@@ -846,5 +864,23 @@ const handleVote = async (direction) => {
 
 .dialog-content::-webkit-scrollbar-thumb:hover {
   background: #666;
+}
+.name-input, .description-input, .comment-input {
+  position: relative;
+  margin-bottom: 5px;
+}
+
+.popup-image {
+  width: 100% !important;
+  height: 180px !important; /* Increased height */
+  margin: -10px -10px 10px -10px !important; /* Extend to edges */
+  border-radius: 8px 8px 0 0 !important;
+}
+
+.popup-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px 8px 0 0;
 }
 </style>
