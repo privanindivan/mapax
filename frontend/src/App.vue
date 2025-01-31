@@ -200,10 +200,15 @@ export default {
       }
     };
 
-    const selectAndCloseRanking = (id) => {
-      selectMarker(id);
-      showRanking.value = false;
-    };
+ // In App.vue, update selectAndCloseRanking:
+const selectAndCloseRanking = (id) => {
+  selectMarker(id);
+  showRanking.value = false;
+  const marker = markers.value.find(m => m.id === id);
+  if (marker && mapRef.value) {
+    mapRef.value.setMapView([marker.lat, marker.lng], 18);
+  }
+};
 
     const handleMapClick = async (latlng) => {
       if (!user.value) {
