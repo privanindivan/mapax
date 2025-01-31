@@ -36,67 +36,67 @@ const GMA_COORDINATES = [14.293054, 121.005381];
 
 const MARKER_ICONS = {
   office: L.divIcon({
-    html: '🏛️',
-    className: 'custom-marker',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
+    html: '<div class="marker-icon">🏛️</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   building: L.divIcon({
-    html: '🏢',
-    className: 'custom-marker',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
+    html: '<div class="marker-icon">🏢</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   restaurant: L.divIcon({
-    html: '🥣',
-    className: 'custom-marker',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
+    html: '<div class="marker-icon">🥣</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   shipping: L.divIcon({
-    html: '📦',
-    className: 'custom-marker',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
+    html: '<div class="marker-icon">📦</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   laundry: L.divIcon({
-    html: '👕',
-    className: 'custom-marker',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
+    html: '<div class="marker-icon">👕</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   church: L.divIcon({
-    html: '⛪',
-    className: 'custom-marker',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
+    html: '<div class="marker-icon">⛪</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   store: L.divIcon({
-    html: '🏪',
-    className: 'custom-marker',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
+    html: '<div class="marker-icon">🏪</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   barber: L.divIcon({
-    html: '✂️',
-    className: 'custom-marker',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
+    html: '<div class="marker-icon">✂️</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   }),
   default: L.divIcon({
-    html: '📍',
-    className: 'custom-marker',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
+    html: '<div class="marker-icon">📍</div>',
+    className: 'custom-marker-wrapper',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
   })
 };
 
@@ -358,5 +358,23 @@ export default {
 :deep(.leaflet-bar),
 :deep(.leaflet-control) {
   display: none !important;
+}
+:deep(.custom-marker-wrapper) {
+  position: absolute !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  background: none !important;
+  border: none !important;
+  pointer-events: none !important;
+}
+
+:deep(.marker-icon) {
+  font-size: 24px !important;
+  line-height: 1 !important;
+  pointer-events: auto !important;
+  filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.3)) !important;
 }
 </style>`
