@@ -110,120 +110,93 @@ export default {
   },
   emits: ['marker-click', 'map-click', 'toggle-add-mode', 'location-error'],
   
-  setup(props, { emit }) {
+ setup(props, { emit }) {
     const map = ref(null);
     const markerGroup = ref(null);
     const userLocationMarker = ref(null);
     const tempMarker = ref(null);
 
-    // 1. Event handler for view details
-    const handleViewDetails = (event) => {
-      emit('marker-click', event.detail);
-    };
-
-    // 2. Map view control method
     const setMapView = (latlng, zoom = 18) => {
-      map.value?.setView(latlng, zoom, {
-        animate: true,
-        duration: 1
-      });
+      if (map.value) {
+        map.value.setView(latlng, zoom, {
+          animate: true,
+          duration: 1
+        });
+      }
     };
 
-    // 3. Marker creation helper
-    const createMarker = (marker) => {
-      const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
-      
-      const markerElement = L.marker([marker.lat, marker.lng], { 
-        icon,
-        riseOnHover: true,
-        zIndexOffset: 1000
-      });
-
-      // Popup content with proper event binding
-      const popupContent = `
-        <div class="marker-popup">
-          ${marker.images?.length > 0 ? `
-            <div class="popup-image">
-              <img src="${marker.images[0]}" alt="${marker.name}" />
-            </div>` : ''}
-          <h3>${marker.name || 'Unnamed Place'}</h3>
-          <button 
-            class="view-details-btn" 
-            data-id="${marker.id}"
-          >
-            View Details
-          </button>
-        </div>
-      `;
-
-      markerElement.bindPopup(popupContent, {
-        closeButton: false,
-        className: 'custom-popup'
-      });
-
-      // Click handler for the marker itself
-      markerElement.on('click', () => {
-        setMapView([marker.lat, marker.lng]);
-      });
-
-      // Popup open handler
-      markerElement.on('popupopen', () => {
-        document.querySelector(`[data-id="${marker.id}"]`)
-          ?.addEventListener('click', () => {
-            window.dispatchEvent(new CustomEvent('viewDetails', { 
-              detail: marker.id 
-            }));
-          });
-      });
-
-      return markerElement;
+    const handleViewDetails = (e) => {
+      emit('marker-click', e.detail);
     };
 
     onMounted(() => {
-      // Initialize map
       map.value = L.map('map', {
         center: GMA_COORDINATES,
         zoom: 16,
         minZoom: 15,
         maxZoom: 19,
         zoomControl: false,
-        maxBounds: L.latLngBounds(
-          PHILIPPINES_BOUNDS.southwest, 
-          PHILIPPINES_BOUNDS.northeast
-        ),
+        maxBounds: L.latLngBounds(PHILIPPINES_BOUNDS.southwest, PHILIPPINES_BOUNDS.northeast),
         maxBoundsViscosity: 1.0
       });
 
-      // Add tile layer
-      L.tileLayer('https://tile.thunderforest.com/neighbourhood/{z}/{x}/{y}.png?apikey=375c923e2b8447249e6774bc2d2f3fa2').addTo(map.value);
+      L.tileLayer('https://tile.thunderforest.com/neighbourhood/{z}/{x}/{y}.png?apikey=375c923e2b8447249e6774bc2d2f3fa2', {
+        attribution: '',
+        minZoom: 15,
+        maxZoom: 19
+      }).addTo(map.value);
 
-      // Initialize layer group
       markerGroup.value = L.layerGroup().addTo(map.value);
-
-      // Add global event listener
+      
       window.addEventListener('viewDetails', handleViewDetails);
 
-      // Map click handler
       map.value.on('click', (e) => {
-        if (props.isAddingMode && confirm('Add place here?')) {
-          tempMarker.value?.remove();
-          tempMarker.value = L.marker(e.latlng, {
-            icon: MARKER_ICONS.default
-          }).addTo(markerGroup.value);
-          emit('map-click', e.latlng);
+        if (props.isAddingMode) {
+          if (confirm('Add place here?')) {
+            tempMarker.value?.remove();
+            tempMarker.value = L.marker(e.latlng, {
+              icon: MARKER_ICONS.default
+            }).addTo(markerGroup.value);
+            emit('map-click', e.latlng);
+          }
         }
       });
     });
 
-    // Marker update watcher
     watch(() => props.markers, (newMarkers) => {
-      markerGroup.value?.clearLayers();
+      if (!map.value || !markerGroup.value) return;
+      markerGroup.value.clearLayers();
+
       newMarkers.forEach(marker => {
-        createMarker(marker).addTo(markerGroup.value);
+        const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
+        
+        const markerElement = L.marker([marker.lat, marker.lng], { 
+          icon,
+          riseOnHover: true
+        }).addTo(markerGroup.value);
+
+        markerElement.bindPopup(`
+          <div class="marker-popup">
+            ${marker.images?.length > 0 ? `
+              <div class="popup-image">
+                <img src="${marker.images[0]}" alt="${marker.name}" />
+              </div>` : ''}
+            <h3>${marker.name || 'Unnamed Place'}</h3>
+            <button onclick="window.dispatchEvent(new CustomEvent('viewDetails', {detail: '${marker.id}'}))" class="view-details-btn">
+              View Details
+            </button>
+          </div>
+        `, { 
+          closeButton: false,
+          className: 'custom-popup'
+        });
+
+        markerElement.on('click', () => {
+          setMapView([marker.lat, marker.lng]);
+        });
       });
     }, { deep: true });
 
-    // Geolocation handler
     const getCurrentLocation = () => {
       if (!navigator.geolocation) {
         emit('location-error', 'Geolocation not supported');
@@ -247,7 +220,12 @@ export default {
       );
     };
 
-    // Cleanup
+    const toggleAddMode = () => {
+      emit('toggle-add-mode', !props.isAddingMode);
+      tempMarker.value?.remove();
+      tempMarker.value = null;
+    };
+
     onBeforeUnmount(() => {
       window.removeEventListener('viewDetails', handleViewDetails);
       map.value?.remove();
@@ -255,14 +233,14 @@ export default {
 
     return {
       getCurrentLocation,
-      toggleAddMode: () => emit('toggle-add-mode', !props.isAddingMode),
+      toggleAddMode,
       setMapView
     };
   }
-};
+   };
 </script>
 
-<style scoped>
+
 <style scoped>
 /* Fixed 8: Enhanced marker styling */
 :deep(.leaflet-marker-icon) {
