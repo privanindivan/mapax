@@ -163,40 +163,44 @@ export default {
       });
     });
 
-    watch(() => props.markers, (newMarkers) => {
-      if (!map.value || !markerGroup.value) return;
-      markerGroup.value.clearLayers();
+  watch(() => props.markers, (newMarkers) => {
+  if (!map.value || !markerGroup.value) return;
+  markerGroup.value.clearLayers();
 
-      newMarkers.forEach(marker => {
-        const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
-        
-        const markerElement = L.marker([marker.lat, marker.lng], { 
-          icon,
-          riseOnHover: true
-        }).addTo(markerGroup.value);
+  newMarkers.forEach(marker => {
+    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
+    
+    const markerElement = L.marker([marker.lat, marker.lng], { 
+      icon,
+      riseOnHover: true,
+      autoPan: true,           // Add this
+      autoPanOnFocus: true     // Add this
+    }).addTo(markerGroup.value);
 
-        markerElement.bindPopup(`
-          <div class="marker-popup">
-            ${marker.images?.length > 0 ? `
-              <div class="popup-image">
-                <img src="${marker.images[0]}" alt="${marker.name}" />
-              </div>` : ''}
-            <h3>${marker.name || 'Unnamed Place'}</h3>
-            <button onclick="window.dispatchEvent(new CustomEvent('viewDetails', {detail: '${marker.id}'}))" class="view-details-btn">
-              View Details
-            </button>
-          </div>
-        `, { 
-          closeButton: false,
-          className: 'custom-popup'
-        });
+    // Add this for immediate popup binding
+    const popupContent = `
+      <div class="marker-popup">
+        ${marker.images?.length > 0 ? `
+          <div class="popup-image">
+            <img src="${marker.images[0]}" alt="${marker.name}" />
+          </div>` : ''}
+        <h3>${marker.name || 'Unnamed Place'}</h3>
+        <button onclick="window.dispatchEvent(new CustomEvent('viewDetails', {detail: '${marker.id}'}))" class="view-details-btn">
+          View Details
+        </button>
+      </div>
+    `;
+    markerElement.bindPopup(popupContent, { 
+      closeButton: false,
+      className: 'custom-popup'
+    });
 
-        markerElement.on('click', () => {
-          setMapView([marker.lat, marker.lng]);
-        });
-      });
-    }, { deep: true });
-
+    if (tempMarker.value) {
+      tempMarker.value.options.autoPan = true;
+      tempMarker.value.options.autoPanOnFocus = true;
+    }
+  });
+}, { deep: true });
     const getCurrentLocation = () => {
       if (!navigator.geolocation) {
         emit('location-error', 'Geolocation not supported');
