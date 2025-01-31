@@ -195,6 +195,203 @@
 </template>
 
 // In PlaceDetailsDialog.vue
+<template>
+  <div class="dialog-overlay" @click.self="closeDialog">
+    <div class="dialog-content">
+      <button @click="closeDialog" class="close-button">×</button>
+      
+      <!-- Delete Button -->
+<!-- In template -->
+<button 
+  v-if="props.place.user_id === user?.id"  
+  @click="handleDelete" 
+  class="delete-button"
+>
+  Delete
+</button>
+        
+
+      <!-- Header Section -->
+      <div class="dialog-header">
+        <input 
+          v-if="isEditing" 
+          v-model="editedPlace.name" 
+          class="name-input"
+          @keyup.enter="saveEdits"
+        >
+        <h2 v-else class="place-name">{{ place.name || 'Unnamed Place' }}</h2>
+      </div>
+
+      <!-- Images Section -->
+      <div class="images-section">
+        <h3>({{ editedPlace.images?.length || 0 }}/3)</h3>
+        <div v-if="editedPlace.images?.length" class="image-grid">
+          <div 
+            v-for="(image, index) in editedPlace.images" 
+            :key="index"
+            class="image-container"
+          >
+            <img 
+              :src="image" 
+              :alt="`Image ${index + 1}`" 
+              class="place-image"
+              @click="showFullscreen(image)"
+            >
+            <button 
+              v-if="isEditing"
+              @click="removeImage(index)"
+              class="remove-image"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        
+        <!-- Image Upload -->
+        <div v-if="isEditing && (editedPlace.images?.length || 0) < 3" class="upload-section">
+          <input
+            type="file"
+            accept="image/*"
+            @change="handleImageUpload"
+            ref="fileInput"
+            class="hidden"
+          >
+          <button 
+            @click="$refs.fileInput.click()"
+            class="add-image-button"
+          >
+            Add Image
+          </button>
+        </div>
+      </div>
+
+      <!-- Voting Section -->
+      <div class="voting-section">
+        <button 
+          @click="handleVote('down')"
+          class="vote-button"
+           :disabled="hasVoted"
+        >
+          ▼
+        </button>
+        <span class="vote-count">{{ editedPlace.votes || 0 }}</span>
+        <button 
+          @click="handleVote('up')"
+          class="vote-button"
+          :disabled="hasVoted" 
+        >
+          ▲
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button 
+          :class="['tab-button', { active: activeTab === 'details' }]"
+          @click="activeTab = 'details'"
+        >
+          Details
+        </button>
+        <button 
+          :class="['tab-button', { active: activeTab === 'comments' }]"
+          @click="activeTab = 'comments'"
+        >
+          Comments
+        </button>
+      </div>
+
+      <!-- Details Tab -->
+      <div v-show="activeTab === 'details'" class="tab-content">
+        <div class="description-section">
+          <!-- Type Selector -->
+          <div v-if="isEditing" class="type-selector">
+            <label>Category:</label>
+            <select v-model="editedPlace.type" class="type-select">
+              <option value="default">📍 Default</option>
+              <option value="office">🏛️ Office</option>
+              <option value="building">🏢 Building</option>
+              <option value="restaurant">🥣 Restaurant</option>
+              <option value="shipping">📦 Shipping</option>
+              <option value="laundry">👕 Laundry</option>
+              <option value="church">⛪ Church</option>
+              <option value="store">🏪 Store</option>
+              <option value="barber">✂️ Barber</option>
+            </select>
+          </div>
+
+          <!-- Description Editor -->
+          <textarea
+            v-if="isEditing"
+            v-model="editedPlace.description"
+            class="description-input"
+            rows="4"
+            placeholder="Add description..."
+          ></textarea>
+          <p v-else class="description-text">
+            {{ editedPlace.description || 'No description available' }}
+          </p>
+
+          <!-- Edit/Save Button -->
+          <button 
+            v-if="canEdit"
+            @click="toggleEdit"
+            class="edit-button"
+          >
+            {{ isEditing ? 'Save' : 'Edit' }}
+          </button>
+        </div>
+
+        <!-- Metadata -->
+        <div class="metadata-section">
+          <p class="last-edited">
+            Last edited: {{ formattedLastEdited }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Comments Tab -->
+      <div v-show="activeTab === 'comments'" class="tab-content">
+        <div class="comments-section">
+          <textarea
+            v-model="newComment"
+            class="comment-input"
+            placeholder="Add a comment..."
+            rows="3"
+          ></textarea>
+          <button 
+            @click="addComment"
+            class="add-comment-button"
+            :disabled="!newComment.trim()"
+          >
+            Post Comment
+          </button>
+
+          <div class="comments-list">
+            <div 
+              v-for="comment in editedPlace.comments" 
+              :key="comment.id" 
+              class="comment"
+            >
+              <p class="comment-text">{{ comment.text }}</p>
+              <p class="comment-date">{{ formatDate(comment.date) }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fullscreen Image -->
+    <div 
+      v-if="fullscreenImage" 
+      class="fullscreen-overlay" 
+      @click="closeFullscreen"
+    >
+      <img :src="fullscreenImage" class="fullscreen-image">
+    </div>
+  </div>
+</template>
+
+// In PlaceDetailsDialog.vue
 <script>
 import { ref, reactive, computed, watch } from 'vue'
 import { supabase } from '../services/supabase'
@@ -417,6 +614,340 @@ const formattedLastEdited = computed(() => {
 }
 </script>
 
+<style scoped>
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.dialog-content {
+  position: relative;
+  background: white;
+  border-radius: 8px;
+  padding: 40px 20px 20px 20px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.delete-button {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  z-index: 2000;
+}
+
+.delete-button:hover {
+  background: #c82333;
+}
+
+.close-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  font-size: 24px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.dialog-header {
+  margin-bottom: 20px;
+}
+
+.place-name {
+  font-size: 24px;
+  margin: 0;
+}
+
+.name-input {
+  width: 100%;
+  padding: 8px;
+  font-size: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+/* Images */
+.images-section {
+  margin: 20px 0;
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.image-container {
+  position: relative;
+  padding-top: 100%;
+  background: #f5f5f5;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.place-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-image {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+}
+.add-image-button {
+  width: 100%;
+  padding: 8px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.add-image-button:hover {
+  background: #1976D2;
+}
+
+/* Voting Section */
+.voting-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  margin: 20px 0;
+}
+
+.vote-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  transition: transform 0.2s;
+}
+
+.vote-button:hover {
+  transform: scale(1.2);
+}
+
+.vote-count {
+  font-size: 20px;
+  font-weight: bold;
+  min-width: 30px;
+  text-align: center;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 20px;
+}
+
+.tab-button {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #666;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s;
+}
+
+.tab-button.active {
+  color: #2196F3;
+  border-bottom-color: #2196F3;
+}
+
+/* Content */
+.tab-content {
+  padding: 10px 0;
+}
+
+.description-section {
+  margin-bottom: 20px;
+}
+
+.type-selector {
+  margin-bottom: 15px;
+}
+
+.type-select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-top: 5px;
+}
+
+.description-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.description-text {
+  line-height: 1.5;
+  color: #333;
+}
+
+.edit-button {
+  padding: 8px 16px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.edit-button:hover {
+  background: #43A047;
+}
+
+.metadata-section {
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+}
+
+.last-edited {
+  font-size: 12px;
+  color: #666;
+}
+
+/* Comments */
+.comments-section {
+  margin-top: 10px;
+}
+
+.comment-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  resize: vertical;
+  margin-bottom: 10px;
+}
+
+.add-comment-button {
+  padding: 8px 16px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.add-comment-button:hover {
+  background: #1976D2;
+}
+
+.add-comment-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.comments-list {
+  margin-top: 20px;
+}
+
+.comment {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.comment:last-child {
+  border-bottom: none;
+}
+
+.comment-text {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.comment-date {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #666;
+}
+
+/* Fullscreen Image */
+.fullscreen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 2500;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.fullscreen-image {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+}
+
+.hidden {
+  display: none;
+}
+</style>
 <style scoped>
 .dialog-overlay {
   position: fixed;
