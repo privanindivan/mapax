@@ -160,30 +160,43 @@ export default {
       });
     });
 
-    // Marker watcher
-    watch(() => props.markers, (newMarkers) => {
-      markerGroup.value?.clearLayers();
+// In MapView.vue, update the watch section:
+watch(() => props.markers, (newMarkers) => {
+  markerGroup.value?.clearLayers();
 
-      newMarkers.forEach(marker => {
-        const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
-        
-        const markerElement = L.marker([marker.lat, marker.lng], { icon })
-          .addTo(markerGroup.value)
-          .bindPopup(`
-            <div class="marker-popup">
-              ${marker.images?.length > 0 ? `
-                <div class="popup-image">
-                  <img src="${marker.images[0]}" alt="${marker.name}" />
-                </div>` : ''}
-              <h3>${marker.name || 'Unnamed Place'}</h3>
-              <button class="view-details-btn" data-id="${marker.id}">
-                View Details
-              </button>
-            </div>
-          `, { 
-            closeButton: false,
-            className: 'custom-popup'
-          });
+  newMarkers.forEach(marker => {
+    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
+    
+    const markerElement = L.marker([marker.lat, marker.lng], { 
+      icon,
+      riseOnHover: true
+    }).addTo(markerGroup.value);
+
+    markerElement.bindPopup(`
+      <div class="marker-popup">
+        ${marker.images?.length > 0 ? `
+          <div class="popup-image">
+            <img src="${marker.images[0]}" alt="${marker.name}" />
+          </div>` : ''}
+        <h3>${marker.name || 'Unnamed Place'}</h3>
+        <button onclick="window.dispatchEvent(new CustomEvent('viewDetails', {detail: '${marker.id}'}))" class="view-details-btn">
+          View Details
+        </button>
+      </div>
+    `, { closeButton: false });
+
+    markerElement.on('click', () => {
+      setMapView([marker.lat, marker.lng]);
+    });
+  });
+}, { deep: true });
+
+// Add this in setup():
+onMounted(() => {
+  window.addEventListener('viewDetails', (e) => {
+    emit('marker-click', e.detail);
+  });
+});
 
         // Proper click handling
         markerElement.on('popupopen', () => {
