@@ -90,7 +90,6 @@ import PlaceDetailsDialog from './components/PlaceDetailsDialog.vue';
 import UserMenu from './components/UserMenu.vue';
 import AuthModal from './components/AuthModal.vue';
 import { supabase } from './services/supabase';
-import { auth } from './services/auth';
 
 const PLACE_TYPES = {
   office: { icon: '🏛️', label: 'Office' },
@@ -112,6 +111,7 @@ export default {
     UserMenu,
     AuthModal
   },
+
   setup() {
     const markers = ref([]);
     const selectedMarker = ref(null);
@@ -130,6 +130,10 @@ export default {
           ...place,
           rank: index + 1
         }));
+    });
+
+    const canDeletePlace = computed(() => {
+      return selectedMarker.value?.user_id === user.value?.id;
     });
 
     const loadPlaces = async () => {
@@ -152,7 +156,9 @@ export default {
           comments: place.comments || [],
           lastEdited: place.last_edited,
           type: place.type || 'default',
-          user_id: place.user_id
+          user_id: place.user_id,
+          voted_users: place.voted_users || [],
+          created_at: place.created_at
         }));
       } catch (error) {
         console.error('Load error:', error);
@@ -160,34 +166,82 @@ export default {
       }
     };
 
-   const handlePlaceUpdate = async (updatedPlace) => {
-  try {
-    const index = markers.value.findIndex(p => p.id === updatedPlace.id);
-    if (index !== -1) {
-      markers.value[index] = { ...markers.value[index], ...updatedPlace };
-      markers.value = [...markers.value]; // Force reactivity
-    }
-  } catch (error) {
-    console.error('Update error:', error);
-    alert('Failed to update place');
-  }
-};
-
-    const handlePlaceDelete = async (placeId) => {
+    const updatePlace = async (updatedPlace) => {
       try {
-        markers.value = markers.value.filter(p => p.id !== placeId);
-        await loadPlaces(); // Refresh data
+        const index = markers.value.findIndex(p => p.id === updatedPlace.id);
+        if (index !== -1) {
+          markers.value = [
+            ...markers.value.slice(0, index),
+            {
+              ...markers.value[index],
+              ...updatedPlace,
+              lat: updatedPlace.latitude || updatedPlace.lat,
+              lng: updatedPlace.longitude || updatedPlace.lng
+            },
+            ...markers.value.slice(index + 1)
+          ];
+        }
+      } catch (error) {
+        console.error('Update error:', error);
+        alert('Failed to update place');
+        await loadPlaces();
+      }
+    };
+
+    const handleMapClick = async (latlng) => {
+      if (!user.value) {
+        showAuthModal.value = true;
+        isAddingMode.value = false;
+        return;
+      }
+
+      if (isAddingMode.value) {
+        try {
+          const newPlace = {
+            name: 'New Place',
+            latitude: latlng.lat,
+            longitude: latlng.lng,
+            user_id: user.value.id,
+            votes: 0,
+            images: [],
+            comments: [],
+            type: 'default',
+            voted_users: [],
+            created_at: new Date().toISOString()
+          };
+
+          const { data, error } = await supabase
+            .from('places')
+            .insert([newPlace])
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          markers.value = [...markers.value, {
+            ...data,
+            lat: data.latitude,
+            lng: data.longitude
+          }];
+          
+          isAddingMode.value = false;
+          selectMarker(data.id);
+        } catch (error) {
+          console.error('Add error:', error);
+          alert('Failed to add place');
+        }
+      }
+    };
+
+    const handleDelete = async (id) => {
+      try {
+        markers.value = markers.value.filter(p => p.id !== id);
+        selectedMarker.value = null;
+        await loadPlaces();
       } catch (error) {
         console.error('Delete error:', error);
         alert('Failed to delete place');
       }
-    };
-
-    const handleLogout = async () => {
-      await auth.signOut();
-      user.value = null;
-      selectedMarker.value = null;
-      isAddingMode.value = false;
     };
 
     const selectMarker = (id) => {
@@ -200,124 +254,25 @@ export default {
       }
     };
 
-const selectAndCloseRanking = (id) => {
-  const marker = markers.value.find(m => m.id === id);
-  if (marker && mapRef.value) {
-    // First set the view to the marker location
-    mapRef.value.setMapView([marker.lat, marker.lng], 18);
-    
-    // Then trigger the marker click after a small delay to ensure the map has finished moving
-    setTimeout(() => {
-      const event = new CustomEvent('viewDetails', { detail: id });
-      window.dispatchEvent(event);
-    }, 100);
-  }
-  showRanking.value = false;
-};
-
- // Inside App.vue setup function
-
-const updatePlace = async (updatedPlace) => {
-  try {
-    // Update local state first
-    const index = markers.value.findIndex(p => p.id === updatedPlace.id)
-    if (index !== -1) {
-      // Create a new array for reactivity
-      markers.value = [
-        ...markers.value.slice(0, index),
-        {
-          ...markers.value[index],
-          ...updatedPlace,
-          lat: updatedPlace.latitude || updatedPlace.lat,
-          lng: updatedPlace.longitude || updatedPlace.lng
-        },
-        ...markers.value.slice(index + 1)
-      ]
-    }
-  } catch (error) {
-    console.error('Update error:', error)
-    alert('Failed to update place')
-    // Reload places to ensure consistency
-    await loadPlaces()
-  }
-}
-
-const handleMapClick = async (latlng) => {
-  if (!user.value) {
-    showAuthModal.value = true
-    isAddingMode.value = false
-    return
-  }
-
-  if (isAddingMode.value) {
-    try {
-      const newPlace = {
-        name: 'New Place',
-        latitude: latlng.lat,
-        longitude: latlng.lng,
-        user_id: user.value.id,
-        votes: 0,
-        images: [],
-        comments: [],
-        type: 'default',
-        voted_users: [],
-        created_at: new Date().toISOString()
+    const selectAndCloseRanking = (id) => {
+      const marker = markers.value.find(m => m.id === id);
+      if (marker && mapRef.value) {
+        mapRef.value.setMapView([marker.lat, marker.lng], 18);
+        setTimeout(() => {
+          const event = new CustomEvent('viewDetails', { detail: id });
+          window.dispatchEvent(event);
+        }, 100);
       }
+      showRanking.value = false;
+    };
 
-      const { data, error } = await supabase
-        .from('places')
-        .insert([newPlace])
-        .select()
-        .single()
-
-      if (error) throw error
-
-      // Add new place to local state
-      markers.value = [...markers.value, {
-        ...data,
-        lat: data.latitude,
-        lng: data.longitude
-      }]
-      
-      isAddingMode.value = false
-      selectMarker(data.id)
-    } catch (error) {
-      console.error('Add error:', error)
-      alert('Failed to add place')
-    }
-  }
-}
-
-// Initialize markers with proper lat/lng mapping
-const loadPlaces = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('places')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-    
-    markers.value = data.map(place => ({
-      id: place.id,
-      lat: place.latitude,
-      lng: place.longitude,
-      name: place.name,
-      description: place.description,
-      votes: place.votes || 0,
-      images: place.images || [],
-      comments: place.comments || [],
-      lastEdited: place.last_edited,
-      type: place.type || 'default',
-      user_id: place.user_id,
-      voted_users: place.voted_users || [],
-      created_at: place.created_at
-    }))
-  } catch (error) {
-    console.error('Load error:', error)
-    markers.value = []
-  }
-}
+    const handleLogout = async () => {
+      await supabase.auth.signOut();
+      user.value = null;
+      selectedMarker.value = null;
+      isAddingMode.value = false;
+      await loadPlaces();
+    };
 
     const handleAuthSuccess = (userData) => {
       user.value = userData;
@@ -329,8 +284,8 @@ const loadPlaces = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         user.value = session.user;
-        await loadPlaces();
       }
+      await loadPlaces();
     });
 
     return {
@@ -344,12 +299,13 @@ const loadPlaces = async () => {
       mapRef,
       selectedCategory,
       PLACE_TYPES,
-      handlePlaceUpdate,
-      handlePlaceDelete,
+      canDeletePlace,
+      updatePlace,
       handleMapClick,
       selectMarker,
       handleAuthSuccess,
       handleLogout,
+      handleDelete,
       selectAndCloseRanking,
       handleLocationError: (err) => alert(err),
       toggleRanking: () => showRanking.value = !showRanking.value,
@@ -357,7 +313,9 @@ const loadPlaces = async () => {
       closeDialog: () => selectedMarker.value = null
     };
   }
-};</script>
+};
+</script>
+
 
 <style scoped>
 .app {
