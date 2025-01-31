@@ -313,6 +313,36 @@ const handleVote = async (direction) => {
     return
   }
 
+  if (editedPlace.voted_users?.includes(user.value.id)) {
+    alert('You have already voted on this place')
+    return
+  }
+
+  try {
+    const voteValue = direction === 'up' ? 1 : -1
+    const updatedVotes = (editedPlace.votes || 0) + voteValue
+    const updatedVotedUsers = [...(editedPlace.voted_users || []), user.value.id]
+
+    const { data, error } = await supabase
+      .from('places')
+      .update({ 
+        votes: updatedVotes,
+        voted_users: updatedVotedUsers 
+      })
+      .eq('id', editedPlace.id)
+      .select('*')
+
+    if (error) throw error
+
+    editedPlace.votes = updatedVotes
+    editedPlace.voted_users = updatedVotedUsers
+    hasVoted.value = true
+    emit('update', { ...editedPlace })
+  } catch (error) {
+    console.error('Vote error:', error)
+  }
+}
+
   // Check if user has already voted
   const hasVoted = editedPlace.voted_users?.includes(user.value.id)
   if (hasVoted) {
@@ -883,4 +913,5 @@ const handleVote = async (direction) => {
   object-fit: cover;
   border-radius: 8px 8px 0 0;
 }
+
 </style>
