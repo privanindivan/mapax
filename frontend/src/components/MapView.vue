@@ -162,53 +162,68 @@ export default {
       })
     })
 
-    watch(() => props.markers, (newMarkers) => {
-      if (!map.value || !markerGroup.value) return
-      
-      markerGroup.value.clearLayers()
-      markersRef.value.clear()
+  watch(() => props.markers, (newMarkers) => {
+  if (!map.value || !markerGroup.value) return
+  
+  markerGroup.value.clearLayers()
+  markersRef.value.clear()
 
-      newMarkers.forEach(marker => {
-        const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default
-        const latlng = L.latLng(parseFloat(marker.lat), parseFloat(marker.lng))
-        
-        const markerElement = L.marker(latlng, { 
-          icon,
-          riseOnHover: true
-        }).addTo(markerGroup.value)
+  newMarkers.forEach(marker => {
+    // Ensure coordinates are valid numbers
+    const lat = parseFloat(marker.lat || marker.latitude)
+    const lng = parseFloat(marker.lng || marker.longitude)
+    
+    if (isNaN(lat) || isNaN(lng)) {
+      console.error('Invalid coordinates for marker:', marker)
+      return
+    }
 
-        const popupContent = document.createElement('div')
-        popupContent.className = 'marker-popup'
-        popupContent.innerHTML = `
-          ${marker.images?.length > 0 ? `
-            <div class="popup-image">
-              <img src="${marker.images[0]}" alt="${marker.name}" />
-            </div>` : ''}
-          <h3>${marker.name || 'Unnamed Place'}</h3>
-          <button class="view-details-btn">
-            View Details
-          </button>
-        `
+    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default
+    const latlng = L.latLng(lat, lng)
+    
+    const markerElement = L.marker(latlng, { 
+      icon,
+      riseOnHover: true,
+      // Add these options to ensure marker stays in place
+      zIndexOffset: 1000,
+      riseOffset: 1000
+    }).addTo(markerGroup.value)
 
-        const popup = L.popup({
-          closeButton: false,
-          className: 'custom-popup',
-          offset: L.point(0, -10)
-        }).setContent(popupContent)
+    // Create popup content
+    const popupContent = document.createElement('div')
+    popupContent.className = 'marker-popup'
+    popupContent.innerHTML = `
+      ${marker.images?.length > 0 ? `
+        <div class="popup-image">
+          <img src="${marker.images[0]}" alt="${marker.name}" />
+        </div>` : ''}
+      <h3>${marker.name || 'Unnamed Place'}</h3>
+      <button class="view-details-btn">
+        View Details
+      </button>
+    `
 
-        markerElement.bindPopup(popup)
+    const popup = L.popup({
+      closeButton: false,
+      className: 'custom-popup',
+      // Adjust offset to account for larger image
+      offset: L.point(0, -20)
+    }).setContent(popupContent)
 
-        popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
-          window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }))
-        })
+    markerElement.bindPopup(popup)
 
-        markerElement.on('click', () => {
-          setMapView(latlng)
-        })
+    // Event handlers
+    popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }))
+    })
 
-        markersRef.value.set(marker.id, markerElement)
-      })
-    }, { deep: true })
+    markerElement.on('click', () => {
+      setMapView(latlng)
+    })
+
+    markersRef.value.set(marker.id, markerElement)
+  })
+}, { deep: true })
 
     const getCurrentLocation = () => {
       if (!navigator.geolocation) {
@@ -376,5 +391,28 @@ export default {
 :deep(.leaflet-bar),
 :deep(.leaflet-control) {
   display: none !important;
+}
+  :deep(.custom-popup .leaflet-popup-content-wrapper) {
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+:deep(.custom-popup .leaflet-popup-content) {
+  margin: 0 !important;
+  width: 250px !important; /* Increased width */
+}
+
+:deep(.marker-popup) {
+  text-align: center;
+}
+
+:deep(.marker-popup h3) {
+  margin: 10px 0;
+  padding: 0 10px;
+}
+
+:deep(.view-details-btn) {
+  margin: 10px;
+  width: calc(100% - 20px);
 }
 </style>
