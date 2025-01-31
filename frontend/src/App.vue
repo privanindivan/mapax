@@ -200,14 +200,17 @@ export default {
       }
     };
 
- // In App.vue, update selectAndCloseRanking:
 const selectAndCloseRanking = (id) => {
   const marker = markers.value.find(m => m.id === id);
   if (marker && mapRef.value) {
+    // First set the view to the marker location
     mapRef.value.setMapView([marker.lat, marker.lng], 18);
-    // Force marker click to show popup
-    const event = new CustomEvent('viewDetails', { detail: id });
-    window.dispatchEvent(event);
+    
+    // Then trigger the marker click after a small delay to ensure the map has finished moving
+    setTimeout(() => {
+      const event = new CustomEvent('viewDetails', { detail: id });
+      window.dispatchEvent(event);
+    }, 100);
   }
   showRanking.value = false;
 };
