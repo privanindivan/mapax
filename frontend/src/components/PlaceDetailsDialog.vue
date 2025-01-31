@@ -215,6 +215,7 @@ export default {
     const user = ref(null)
     const hasVoted = ref(false)
 
+    // Initialize user session
     onMounted(async () => {
       const { data: { session } } = await supabase.auth.getSession()
       user.value = session?.user || null
@@ -224,11 +225,9 @@ export default {
       }
     })
 
+    // Update editedPlace when props change
     watch(() => props.place, (newPlace) => {
       Object.assign(editedPlace, newPlace)
-      if (user.value && editedPlace.voted_users) {
-        hasVoted.value = editedPlace.voted_users.includes(user.value.id)
-      }
     })
 
     const formattedLastEdited = computed(() => {
@@ -239,36 +238,37 @@ export default {
     })
 
     const toggleEdit = async () => {
-      if (!user.value) {
-        alert('Please login to edit')
-        return
-      }
-
       if (isEditing.value) {
         try {
-          if (editedPlace.user_id !== user.value.id) {
-            throw new Error('Only the creator can edit this place')
-          }
-
+          // Prepare updates with all necessary fields
           const updates = {
             name: editedPlace.name,
             description: editedPlace.description,
             type: editedPlace.type,
-            last_edited: new Date().toISOString()
+            last_edited: new Date().toISOString(),
+            user_id: user.value?.id || editedPlace.user_id,
+            latitude: editedPlace.lat,
+            longitude: editedPlace.lng,
+            images: editedPlace.images || [],
+            comments: editedPlace.comments || [],
+            votes: editedPlace.votes || 0,
+            voted_users: editedPlace.voted_users || []
           }
 
           const { error } = await supabase
             .from('places')
             .update(updates)
             .eq('id', editedPlace.id)
-            .eq('user_id', user.value.id)
 
           if (error) throw error
-          emit('update', { ...editedPlace, ...updates })
+          
+          // Update local state and emit update
+          Object.assign(editedPlace, updates)
+          emit('update', { ...editedPlace })
           isEditing.value = false
         } catch (error) {
           console.error('Edit error:', error)
-          alert('Failed to save changes. Only creator can edit.')
+          alert('Failed to save changes.')
         }
       } else {
         isEditing.value = true
@@ -281,20 +281,15 @@ export default {
         return
       }
 
-      if (editedPlace.voted_users?.includes(user.value.id)) {
-        alert('You have already voted on this place')
-        return
-      }
-
       try {
         const voteValue = direction === 'up' ? 1 : -1
-        const updatedVotes = (editedPlace.votes || 0) + voteValue
+        const newVotes = (editedPlace.votes || 0) + voteValue
         const updatedVotedUsers = [...(editedPlace.voted_users || []), user.value.id]
 
         const { data, error } = await supabase
           .from('places')
           .update({ 
-            votes: updatedVotes,
+            votes: newVotes,
             voted_users: updatedVotedUsers
           })
           .eq('id', editedPlace.id)
@@ -302,10 +297,11 @@ export default {
           .single()
 
         if (error) throw error
+
         editedPlace.votes = data.votes
         editedPlace.voted_users = data.voted_users
         hasVoted.value = true
-        emit('update', editedPlace)
+        emit('update', { ...editedPlace })
       } catch (error) {
         console.error('Vote error:', error)
         alert('Failed to vote')
@@ -313,16 +309,6 @@ export default {
     }
 
     const handleDelete = async () => {
-      if (!user.value) {
-        alert('Please login to delete')
-        return
-      }
-
-      if (editedPlace.user_id !== user.value.id) {
-        alert('Only the creator can delete this place')
-        return
-      }
-
       if (!confirm('Are you sure you want to delete this place?')) return
       
       try {
@@ -330,7 +316,6 @@ export default {
           .from('places')
           .delete()
           .eq('id', editedPlace.id)
-          .eq('user_id', user.value.id)
 
         if (error) throw error
         emit('delete', editedPlace.id)
@@ -366,12 +351,12 @@ export default {
             last_edited: new Date().toISOString()
           })
           .eq('id', editedPlace.id)
-          .eq('user_id', user.value.id)
 
         if (error) throw error
         editedPlace.images = updatedImages
         emit('update', { ...editedPlace })
       } catch (error) {
+        console.error('Image upload error:', error)
         alert('Failed to upload image')
       } finally {
         if (fileInput.value) {
@@ -389,12 +374,12 @@ export default {
           .from('places')
           .update({ images: updatedImages })
           .eq('id', editedPlace.id)
-          .eq('user_id', user.value.id)
 
         if (error) throw error
         editedPlace.images = updatedImages
-        emit('update', editedPlace)
+        emit('update', { ...editedPlace })
       } catch (error) {
+        console.error('Remove image error:', error)
         alert('Failed to remove image')
       }
     }
@@ -426,7 +411,7 @@ export default {
         if (error) throw error
         editedPlace.comments = updatedComments
         newComment.value = ''
-        emit('update', editedPlace)
+        emit('update', { ...editedPlace })
       } catch (error) {
         console.error('Comment error:', error)
         alert('Failed to add comment')
