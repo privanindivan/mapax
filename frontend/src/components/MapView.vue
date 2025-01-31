@@ -172,92 +172,75 @@ export default {
       });
     });
 
-    watch(() => props.markers, (newMarkers) => {
-      if (!map.value || !markerGroup.value) return;
-      markerGroup.value.clearLayers();
-      markersRef.value.clear();
+watch(() => props.markers, (newMarkers) => {
+  if (!map.value || !markerGroup.value) return;
+  markerGroup.value.clearLayers();
+  markersRef.value.clear();
 
-      newMarkers.forEach(marker => {
-        const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
-        const fixedLatLng = L.latLng(marker.lat, marker.lng);
-        
-        const markerElement = L.marker(fixedLatLng, { 
-          icon,
-          riseOnHover: true
-        }).addTo(markerGroup.value);
+  newMarkers.forEach(marker => {
+    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
+    
+    // Create marker with fixed geographical coordinates
+    const latlng = L.latLng(parseFloat(marker.lat), parseFloat(marker.lng));
+    
+    const markerElement = L.marker(latlng, { 
+      icon,
+      riseOnHover: true
+    }).addTo(markerGroup.value);
 
-        const popupContent = document.createElement('div');
-        popupContent.className = 'marker-popup';
-        popupContent.innerHTML = `
-          ${marker.images?.length > 0 ? `
-            <div class="popup-image">
-              <img src="${marker.images[0]}" alt="${marker.name}" />
-            </div>` : ''}
-          <h3>${marker.name || 'Unnamed Place'}</h3>
-          <button class="view-details-btn">
-            View Details
-          </button>
-        `;
+    const popupContent = document.createElement('div');
+    popupContent.className = 'marker-popup';
+    popupContent.innerHTML = `
+      ${marker.images?.length > 0 ? `
+        <div class="popup-image">
+          <img src="${marker.images[0]}" alt="${marker.name}" />
+        </div>` : ''}
+      <h3>${marker.name || 'Unnamed Place'}</h3>
+      <button class="view-details-btn">
+        View Details
+      </button>
+    `;
 
-        const popup = L.popup({
-          closeButton: false,
-          className: 'custom-popup'
-        }).setContent(popupContent);
+    const popup = L.popup({
+      closeButton: false,
+      className: 'custom-popup',
+      offset: L.point(0, -10)
+    }).setContent(popupContent);
 
-        markerElement.bindPopup(popup);
+    markerElement.bindPopup(popup);
 
-        // Add click handler for the view details button
-        popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
-          window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
-        });
-
-        markerElement.on('click', () => {
-          setMapView(fixedLatLng);
-        });
-
-        markersRef.value.set(marker.id, markerElement);
-      });
-    }, { deep: true });
-
-    const getCurrentLocation = () => {
-      if (!navigator.geolocation) {
-        emit('location-error', 'Geolocation not supported');
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords;
-          userLocationMarker.value?.remove();
-          userLocationMarker.value = L.circleMarker([latitude, longitude], {
-            radius: 8,
-            fillColor: '#4CAF50',
-            color: '#fff',
-            weight: 2,
-            fillOpacity: 0.8
-          }).addTo(markerGroup.value);
-          setMapView([latitude, longitude]);
-        },
-        (err) => emit('location-error', err.message)
-      );
-    };
-
-    const toggleAddMode = () => {
-      emit('toggle-add-mode', !props.isAddingMode);
-      tempMarker.value?.remove();
-      tempMarker.value = null;
-    };
-
-    onBeforeUnmount(() => {
-      window.removeEventListener('viewDetails', handleViewDetails);
-      map.value?.remove();
+    // Add click handler for the view details button
+    popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
     });
 
-    return {
-      getCurrentLocation,
-      toggleAddMode,
-      setMapView
-    };
+    markerElement.on('click', () => {
+      setMapView(latlng);
+    });
+
+    markersRef.value.set(marker.id, markerElement);
+  });
+}, { deep: true });
+
+// Also update the handleMapClick function
+const handleMapClick = (e) => {
+  if (props.isAddingMode) {
+    if (confirm('Add place here?')) {
+      const latlng = L.latLng(e.latlng.lat, e.latlng.lng);
+      
+      if (tempMarker.value) {
+        markerGroup.value.removeLayer(tempMarker.value);
+      }
+      
+      tempMarker.value = L.marker(latlng, {
+        icon: MARKER_ICONS.default
+      }).addTo(markerGroup.value);
+      
+      emit('map-click', { 
+        lat: latlng.lat,
+        lng: latlng.lng
+      });
+    }
   }
 };
 </script>
