@@ -164,9 +164,7 @@ export default {
 watch(() => props.markers, (newMarkers) => {
   if (!map.value || !markerGroup.value) return;
   
-  // Keep track of processed markers
-  const processedMarkers = new Set();
-
+  // Don't clear all layers every time, update selectively
   newMarkers.forEach(marker => {
     const lat = parseFloat(marker.lat || marker.latitude);
     const lng = parseFloat(marker.lng || marker.longitude);
@@ -176,72 +174,62 @@ watch(() => props.markers, (newMarkers) => {
       return;
     }
 
-    processedMarkers.add(marker.id);
     const existingMarker = markersRef.value.get(marker.id);
     const latlng = L.latLng(lat, lng);
 
-    // Check if marker exists and needs update
-    if (existingMarker) {
-      const currentPos = existingMarker.getLatLng();
-      const typeChanged = existingMarker.options.icon !== MARKER_ICONS[marker.type];
-      
-      if (currentPos.lat !== lat || currentPos.lng !== lng || typeChanged) {
+    // Only update if marker doesn't exist or position/type changed
+    if (!existingMarker || 
+        existingMarker.getLatLng().lat !== lat || 
+        existingMarker.getLatLng().lng !== lng ||
+        existingMarker.options.icon !== MARKER_ICONS[marker.type]) {
+
+      if (existingMarker) {
         markerGroup.value.removeLayer(existingMarker);
-      } else {
-        // Update popup content if needed
-        const popupContent = existingMarker.getPopup().getContent();
-        if (marker.images?.length > 0 && !popupContent.includes(marker.images[0])) {
-          updatePopupContent(existingMarker, marker);
-        }
-        return;
       }
+
+      const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
+      
+      const markerElement = L.marker(latlng, { 
+        icon,
+        riseOnHover: true,
+        zIndexOffset: 1000
+      }).addTo(markerGroup.value);
+
+      const popupContent = document.createElement('div');
+      popupContent.className = 'marker-popup';
+      popupContent.innerHTML = `
+        ${marker.images?.length > 0 ? `
+          <div class="popup-image">
+            <img src="${marker.images[0]}" alt="${marker.name}" />
+          </div>` : ''}
+        <h3>${marker.name || 'Unnamed Place'}</h3>
+        <button class="view-details-btn">
+          View Details
+        </button>
+      `;
+
+      const popup = L.popup({
+        closeButton: false,
+        className: 'custom-popup'
+      }).setContent(popupContent);
+
+      markerElement.bindPopup(popup);
+
+      popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
+        window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
+      });
+
+      markerElement.on('click', () => {
+        setMapView(latlng);
+      });
+
+      markersRef.value.set(marker.id, markerElement);
     }
-
-    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
-    const markerElement = L.marker(latlng, { 
-      icon,
-      riseOnHover: true,
-      zIndexOffset: 1000,
-      riseOffset: 1000,
-      keyboard: false,
-      autoPanOnFocus: false
-    }).addTo(markerGroup.value);
-
-    const popupContent = document.createElement('div');
-    popupContent.className = 'marker-popup';
-    popupContent.innerHTML = `
-      ${marker.images?.length > 0 ? `
-        <div class="popup-image">
-          <img src="${marker.images[0]}" alt="${marker.name}" />
-        </div>` : ''}
-      <h3>${marker.name || 'Unnamed Place'}</h3>
-      <button class="view-details-btn">
-        View Details
-      </button>
-    `;
-
-    const popup = L.popup({
-      closeButton: false,
-      className: 'custom-popup',
-      autoPan: false
-    }).setContent(popupContent);
-
-    markerElement.bindPopup(popup);
-
-    popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
-      window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
-    });
-
-    markerElement.on('click', () => {
-      setMapView(latlng);
-    });
-
-    markersRef.value.set(marker.id, markerElement);
   });
 
-  // Remove markers that no longer exist
+  // Remove only markers that no longer exist
   markersRef.value.forEach((marker, id) => {
-    if (!processedMarkers.has(id)) {
+    if (!newMarkers.find(m => m.id === id)) {
       markerGroup.value.removeLayer(marker);
       markersRef.value.delete(id);
     }
