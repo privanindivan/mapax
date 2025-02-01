@@ -104,6 +104,7 @@ export default {
     const userLocationMarker = ref(null)
     const tempMarker = ref(null)
     const markersRef = ref(new Map())
+    const stableMarkers = ref(new Map())
 
     const setMapView = (latlng, zoom = 18) => {
       if (map.value) {
@@ -114,16 +115,14 @@ export default {
       }
     }
 
-    const handleViewDetails = (e) => {
-      const marker = markersRef.value.get(e.detail)
-      if (marker) {
-        marker.openPopup()
-        const markerLatLng = marker.getLatLng()
-        setMapView(markerLatLng)
-      }
-      emit('marker-click', e.detail)
-    }
-
+   const handleViewDetails = (e) => {
+  const marker = stableMarkers.value.get(e.detail);
+  if (marker) {
+    marker.openPopup();
+    setMapView(marker.getLatLng());
+  }
+  emit('marker-click', e.detail);
+   };
     onMounted(() => {
       map.value = L.map('map', {
         center: GMA_COORDINATES,
@@ -164,10 +163,8 @@ export default {
 
 watch(() => props.markers, (newMarkers) => {
   if (!map.value || !markerGroup.value) return;
-  
-  markerGroup.value.clearLayers();
-  markersRef.value.clear();
 
+  // Only update markers that have changed
   newMarkers.forEach(marker => {
     const lat = parseFloat(marker.lat || marker.latitude);
     const lng = parseFloat(marker.lng || marker.longitude);
@@ -177,16 +174,34 @@ watch(() => props.markers, (newMarkers) => {
       return;
     }
 
-    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
+    const existingMarker = stableMarkers.value.get(marker.id);
     const latlng = L.latLng(lat, lng);
+
+    // If marker exists and position hasn't changed, skip update
+    if (existingMarker && 
+        existingMarker.getLatLng().lat === lat && 
+        existingMarker.getLatLng().lng === lng) {
+      return;
+    }
+
+    // Remove old marker if it exists
+    if (existingMarker) {
+      markerGroup.value.removeLayer(existingMarker);
+    }
+
+    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
     
     const markerElement = L.marker(latlng, { 
       icon,
       riseOnHover: true,
       zIndexOffset: 1000,
-      riseOffset: 1000
+      keyboard: false,  // Disable keyboard navigation
+      // Add these options to make marker more stable
+      bubblingMouseEvents: false,
+      autoPanOnFocus: false
     }).addTo(markerGroup.value);
 
+    // Create popup content
     const popupContent = document.createElement('div');
     popupContent.className = 'marker-popup';
     popupContent.innerHTML = `
@@ -202,11 +217,13 @@ watch(() => props.markers, (newMarkers) => {
 
     const popup = L.popup({
       closeButton: false,
-      className: 'custom-popup'
+      className: 'custom-popup',
+      autoPan: false  // Disable auto-panning
     }).setContent(popupContent);
 
     markerElement.bindPopup(popup);
 
+    // Add event listeners
     popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
       window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
     });
@@ -215,7 +232,18 @@ watch(() => props.markers, (newMarkers) => {
       setMapView(latlng);
     });
 
+    // Store in both references
+    stableMarkers.value.set(marker.id, markerElement);
     markersRef.value.set(marker.id, markerElement);
+  });
+
+  // Clean up removed markers
+  markersRef.value.forEach((marker, id) => {
+    if (!newMarkers.find(m => m.id === id)) {
+      markerGroup.value.removeLayer(marker);
+      markersRef.value.delete(id);
+      stableMarkers.value.delete(id);
+    }
   });
 }, { deep: true });
 
@@ -408,5 +436,18 @@ watch(() => props.markers, (newMarkers) => {
 :deep(.view-details-btn) {
   margin: 10px;
   width: calc(100% - 20px);
+}
+:deep(.leaflet-marker-pane) {
+  will-change: transform !important;
+}
+
+:deep(.custom-marker-wrapper) {
+  transform-origin: center bottom !important;
+  will-change: transform !important;
+}
+
+:deep(.leaflet-zoom-animated) {
+  will-change: transform !important;
+  transform-origin: center !important;
 }
 </style>
