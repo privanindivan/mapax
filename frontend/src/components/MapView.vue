@@ -236,20 +236,6 @@ watch(() => props.markers, (newMarkers) => {
   });
 }, { deep: true });
 
-
-  const popup = L.popup({
-    closeButton: false,
-    className: 'custom-popup',
-    autoPan: false
-  }).setContent(popupContent);
-
-  markerElement.bindPopup(popup);
-
-  popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
-    window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
-  });
-};
-
     const getCurrentLocation = () => {
       if (!navigator.geolocation) {
         emit('location-error', 'Geolocation not supported')
