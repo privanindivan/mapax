@@ -255,15 +255,16 @@ export default {
         const voteValue = direction === 'up' ? 1 : -1
         const updatedVotes = (editedPlace.votes || 0) + voteValue
         const updatedVotedUsers = [...(editedPlace.voted_users || []), user.value.id]
-
-        const { error } = await supabase
-          .from('places')
-          .update({ 
-            votes: updatedVotes,
-            voted_users: updatedVotedUsers 
-          })
-          .eq('id', editedPlace.id)
-          .select('*')
+// Update database first
+    const { data, error } = await supabase
+      .from('places')
+      .update({ 
+        votes: updatedVotes,
+        voted_users: updatedVotedUsers 
+      })
+      .eq('id', editedPlace.id)
+      .select('*')
+      .single()
 
         if (error) throw error
 
