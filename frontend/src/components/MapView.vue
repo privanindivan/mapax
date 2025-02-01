@@ -236,20 +236,6 @@ watch(() => props.markers, (newMarkers) => {
   });
 }, { deep: true });
 
-// Add this helper function
-const updatePopupContent = (markerElement, marker) => {
-  const popupContent = document.createElement('div');
-  popupContent.className = 'marker-popup';
-  popupContent.innerHTML = `
-    ${marker.images?.length > 0 ? `
-      <div class="popup-image">
-        <img src="${marker.images[0]}" alt="${marker.name}" />
-      </div>` : ''}
-    <h3>${marker.name || 'Unnamed Place'}</h3>
-    <button class="view-details-btn">
-      View Details
-    </button>
-  `;
 
   const popup = L.popup({
     closeButton: false,
