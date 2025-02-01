@@ -163,8 +163,10 @@ export default {
 
 watch(() => props.markers, (newMarkers) => {
   if (!map.value || !markerGroup.value) return;
+  
+  // Keep track of processed markers
+  const processedMarkers = new Set();
 
-  // Only update markers that have changed
   newMarkers.forEach(marker => {
     const lat = parseFloat(marker.lat || marker.latitude);
     const lng = parseFloat(marker.lng || marker.longitude);
@@ -174,34 +176,37 @@ watch(() => props.markers, (newMarkers) => {
       return;
     }
 
-    const existingMarker = stableMarkers.value.get(marker.id);
+    processedMarkers.add(marker.id);
+    const existingMarker = markersRef.value.get(marker.id);
     const latlng = L.latLng(lat, lng);
 
-    // If marker exists and position hasn't changed, skip update
-    if (existingMarker && 
-        existingMarker.getLatLng().lat === lat && 
-        existingMarker.getLatLng().lng === lng) {
-      return;
-    }
-
-    // Remove old marker if it exists
+    // Check if marker exists and needs update
     if (existingMarker) {
-      markerGroup.value.removeLayer(existingMarker);
+      const currentPos = existingMarker.getLatLng();
+      const typeChanged = existingMarker.options.icon !== MARKER_ICONS[marker.type];
+      
+      if (currentPos.lat !== lat || currentPos.lng !== lng || typeChanged) {
+        markerGroup.value.removeLayer(existingMarker);
+      } else {
+        // Update popup content if needed
+        const popupContent = existingMarker.getPopup().getContent();
+        if (marker.images?.length > 0 && !popupContent.includes(marker.images[0])) {
+          updatePopupContent(existingMarker, marker);
+        }
+        return;
+      }
     }
 
     const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
-    
     const markerElement = L.marker(latlng, { 
       icon,
       riseOnHover: true,
       zIndexOffset: 1000,
-      keyboard: false,  // Disable keyboard navigation
-      // Add these options to make marker more stable
-      bubblingMouseEvents: false,
+      riseOffset: 1000,
+      keyboard: false,
       autoPanOnFocus: false
     }).addTo(markerGroup.value);
 
-    // Create popup content
     const popupContent = document.createElement('div');
     popupContent.className = 'marker-popup';
     popupContent.innerHTML = `
@@ -218,12 +223,11 @@ watch(() => props.markers, (newMarkers) => {
     const popup = L.popup({
       closeButton: false,
       className: 'custom-popup',
-      autoPan: false  // Disable auto-panning
+      autoPan: false
     }).setContent(popupContent);
 
     markerElement.bindPopup(popup);
 
-    // Add event listeners
     popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
       window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
     });
@@ -232,20 +236,45 @@ watch(() => props.markers, (newMarkers) => {
       setMapView(latlng);
     });
 
-    // Store in both references
-    stableMarkers.value.set(marker.id, markerElement);
     markersRef.value.set(marker.id, markerElement);
   });
 
-  // Clean up removed markers
+  // Remove markers that no longer exist
   markersRef.value.forEach((marker, id) => {
-    if (!newMarkers.find(m => m.id === id)) {
+    if (!processedMarkers.has(id)) {
       markerGroup.value.removeLayer(marker);
       markersRef.value.delete(id);
-      stableMarkers.value.delete(id);
     }
   });
 }, { deep: true });
+
+// Add this helper function
+const updatePopupContent = (markerElement, marker) => {
+  const popupContent = document.createElement('div');
+  popupContent.className = 'marker-popup';
+  popupContent.innerHTML = `
+    ${marker.images?.length > 0 ? `
+      <div class="popup-image">
+        <img src="${marker.images[0]}" alt="${marker.name}" />
+      </div>` : ''}
+    <h3>${marker.name || 'Unnamed Place'}</h3>
+    <button class="view-details-btn">
+      View Details
+    </button>
+  `;
+
+  const popup = L.popup({
+    closeButton: false,
+    className: 'custom-popup',
+    autoPan: false
+  }).setContent(popupContent);
+
+  markerElement.bindPopup(popup);
+
+  popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
+  });
+};
 
     const getCurrentLocation = () => {
       if (!navigator.geolocation) {
