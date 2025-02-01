@@ -132,8 +132,12 @@ export default {
         zoomControl: false,
         maxBounds: L.latLngBounds(PHILIPPINES_BOUNDS.southwest, PHILIPPINES_BOUNDS.northeast),
         maxBoundsViscosity: 1.0
-      })
-
+       // Add these options
+    wheelDebounceTime: 100,
+    wheelPxPerZoomLevel: 100,
+    tap: false, // Disable tap handler
+    bounceAtZoomLimits: false
+  });
       L.tileLayer('https://tile.thunderforest.com/neighbourhood/{z}/{x}/{y}.png?apikey=375c923e2b8447249e6774bc2d2f3fa2', {
         attribution: '',
         minZoom: 15,
@@ -164,9 +168,8 @@ export default {
 watch(() => props.markers, (newMarkers) => {
   if (!map.value || !markerGroup.value) return;
   
-  // Clear and rebuild markers all at once - more stable approach
-  markerGroup.value.clearLayers();
-  markersRef.value.clear();
+  // Create all new markers first before removing old ones
+  const newMarkersMap = new Map();
 
   newMarkers.forEach(marker => {
     const lat = parseFloat(marker.lat || marker.latitude);
@@ -177,15 +180,24 @@ watch(() => props.markers, (newMarkers) => {
       return;
     }
 
-    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
     const latlng = L.latLng(lat, lng);
+    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
     
+    // Check if marker already exists and hasn't changed
+    const existingMarker = markersRef.value.get(marker.id);
+    if (existingMarker && 
+        existingMarker.getLatLng().equals(latlng) && 
+        existingMarker.options.icon === icon) {
+      newMarkersMap.set(marker.id, existingMarker);
+      return;
+    }
+
+    // Create new marker
     const markerElement = L.marker(latlng, { 
       icon,
       riseOnHover: true,
       zIndexOffset: 1000,
-      riseOffset: 1000,
-      bubblingMouseEvents: false // Prevent event bubbling
+      keyboard: false
     }).addTo(markerGroup.value);
 
     const popupContent = document.createElement('div');
@@ -204,15 +216,17 @@ watch(() => props.markers, (newMarkers) => {
     const popup = L.popup({
       closeButton: false,
       className: 'custom-popup',
-      offset: L.point(0, -20)
+      offset: L.point(0, -20),
+      keepInView: true
     }).setContent(popupContent);
 
     markerElement.bindPopup(popup);
 
-    // Add event listeners
+    // Event listeners
     const viewDetailsBtn = popupContent.querySelector('.view-details-btn');
     if (viewDetailsBtn) {
-      viewDetailsBtn.addEventListener('click', () => {
+      viewDetailsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
       });
     }
@@ -221,8 +235,18 @@ watch(() => props.markers, (newMarkers) => {
       setMapView(latlng);
     });
 
-    markersRef.value.set(marker.id, markerElement);
+    newMarkersMap.set(marker.id, markerElement);
   });
+
+  // Remove old markers that aren't in the new set
+  markersRef.value.forEach((marker, id) => {
+    if (!newMarkersMap.has(id)) {
+      markerGroup.value.removeLayer(marker);
+    }
+  });
+
+  // Update reference
+  markersRef.value = newMarkersMap;
 }, { deep: true });
     const getCurrentLocation = () => {
       if (!navigator.geolocation) {
