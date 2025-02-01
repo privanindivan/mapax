@@ -241,22 +241,22 @@ export default {
     })
 
     const handleVote = async (direction) => {
-      if (!user.value) {
-        alert('Please login to vote')
-        return
-      }
+  if (!user.value) {
+    alert('Please login to vote')
+    return
+  }
 
-      if (editedPlace.voted_users?.includes(user.value.id)) {
-        alert('You have already voted on this place')
-        return
-      }
+  if (editedPlace.voted_users?.includes(user.value.id)) {
+    alert('You have already voted on this place')
+    return
+  }
 
-      try {
-        const voteValue = direction === 'up' ? 1 : -1
-        const updatedVotes = (editedPlace.votes || 0) + voteValue
-        const updatedVotedUsers = [...(editedPlace.voted_users || []), user.value.id]
-// Update database first
-    const { data, error } = await supabase
+  try {
+    const voteValue = direction === 'up' ? 1 : -1
+    const updatedVotes = (editedPlace.votes || 0) + voteValue
+    const updatedVotedUsers = [...(editedPlace.voted_users || []), user.value.id]
+
+    const { error } = await supabase
       .from('places')
       .update({ 
         votes: updatedVotes,
@@ -264,18 +264,34 @@ export default {
       })
       .eq('id', editedPlace.id)
       .select('*')
+
+    if (error) throw error
+
+    editedPlace.votes = updatedVotes
+    editedPlace.voted_users = updatedVotedUsers
+    hasVoted.value = true
+
+    // Emit update with complete data
+    emit('update', {
+      ...editedPlace,
+      votes: updatedVotes,
+      voted_users: updatedVotedUsers
+    })
+  } catch (error) {
+    console.error('Vote error:', error)
+    // Reload place data on error
+    const { data: refreshedData, error: fetchError } = await supabase
+      .from('places')
+      .select('*')
+      .eq('id', editedPlace.id)
       .single()
-
-        if (error) throw error
-
-        editedPlace.votes = updatedVotes
-        editedPlace.voted_users = updatedVotedUsers
-        hasVoted.value = true
-        emit('update', { ...editedPlace })
-      } catch (error) {
-        console.error('Vote error:', error)
-      }
+    
+    if (!fetchError && refreshedData) {
+      Object.assign(editedPlace, refreshedData)
+      emit('update', { ...editedPlace })
     }
+  }
+}
 
     const toggleEdit = async () => {
       if (!user.value) {
