@@ -176,7 +176,11 @@ export default {
               ...markers.value[index],
               ...updatedPlace,
               lat: updatedPlace.latitude || updatedPlace.lat,
-              lng: updatedPlace.longitude || updatedPlace.lng
+              lng: updatedPlace.longitude || updatedPlace.lng,
+              type: updatedPlace.type,
+          images: updatedPlace.images,
+          votes: updatedPlace.votes,
+          voted_users: updatedPlace.voted_users
             },
             ...markers.value.slice(index + 1)
           ];
