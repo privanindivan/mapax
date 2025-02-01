@@ -124,18 +124,20 @@ export default {
   emit('marker-click', e.detail);
    };
     onMounted(() => {
-      map.value = L.map('map', {
-        center: GMA_COORDINATES,
-        zoom: 16,
-        minZoom: 15,
-        maxZoom: 19,
-        zoomControl: false,
-        maxBounds: L.latLngBounds(PHILIPPINES_BOUNDS.southwest, PHILIPPINES_BOUNDS.northeast),
-        maxBoundsViscosity: 1.0,
-    wheelDebounceTime: 100,
-    wheelPxPerZoomLevel: 100,
-    tap: false, // Disable tap handler
-    bounceAtZoomLimits: false
+  map.value = L.map('map', {
+    center: GMA_COORDINATES,
+    zoom: 16,
+    minZoom: 15,
+    maxZoom: 19,
+    zoomControl: false,
+    maxBounds: L.latLngBounds(PHILIPPINES_BOUNDS.southwest, PHILIPPINES_BOUNDS.northeast),
+    maxBoundsViscosity: 1.0,
+    wheelDebounceTime: 50,
+    wheelPxPerZoomLevel: 60,
+    zoomSnap: 0.5,
+    zoomDelta: 0.5,
+    trackResize: true,
+    renderer: L.canvas()
   });
       L.tileLayer('https://tile.thunderforest.com/neighbourhood/{z}/{x}/{y}.png?apikey=375c923e2b8447249e6774bc2d2f3fa2', {
         attribution: '',
@@ -167,9 +169,6 @@ export default {
 watch(() => props.markers, (newMarkers) => {
   if (!map.value || !markerGroup.value) return;
   
-  // Create all new markers first before removing old ones
-  const newMarkersMap = new Map();
-
   newMarkers.forEach(marker => {
     const lat = parseFloat(marker.lat || marker.latitude);
     const lng = parseFloat(marker.lng || marker.longitude);
@@ -180,73 +179,96 @@ watch(() => props.markers, (newMarkers) => {
     }
 
     const latlng = L.latLng(lat, lng);
-    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
-    
-    // Check if marker already exists and hasn't changed
     const existingMarker = markersRef.value.get(marker.id);
-    if (existingMarker && 
-        existingMarker.getLatLng().equals(latlng) && 
-        existingMarker.options.icon === icon) {
-      newMarkersMap.set(marker.id, existingMarker);
-      return;
-    }
 
-    // Create new marker
-    const markerElement = L.marker(latlng, { 
-      icon,
-      riseOnHover: true,
-      zIndexOffset: 1000,
-      keyboard: false
-    }).addTo(markerGroup.value);
+    // Update or create marker
+    if (existingMarker) {
+      // Update marker position if needed
+      if (!existingMarker.getLatLng().equals(latlng)) {
+        existingMarker.setLatLng(latlng);
+      }
+      // Update icon if type changed
+      if (existingMarker.options.icon !== MARKER_ICONS[marker.type]) {
+        existingMarker.setIcon(MARKER_ICONS[marker.type] || MARKER_ICONS.default);
+      }
+      // Update popup content
+      const popupContent = document.createElement('div');
+      popupContent.className = 'marker-popup';
+      popupContent.innerHTML = `
+        ${marker.images?.length > 0 ? `
+          <div class="popup-image">
+            <img src="${marker.images[0]}" alt="${marker.name}" />
+          </div>` : ''}
+        <h3>${marker.name || 'Unnamed Place'}</h3>
+        <button class="view-details-btn">
+          View Details
+        </button>
+      `;
+      
+      const popup = L.popup({
+        closeButton: false,
+        className: 'custom-popup',
+        offset: L.point(0, -32)
+      }).setContent(popupContent);
+      
+      existingMarker.bindPopup(popup);
 
-    const popupContent = document.createElement('div');
-    popupContent.className = 'marker-popup';
-    popupContent.innerHTML = `
-      ${marker.images?.length > 0 ? `
-        <div class="popup-image">
-          <img src="${marker.images[0]}" alt="${marker.name}" />
-        </div>` : ''}
-      <h3>${marker.name || 'Unnamed Place'}</h3>
-      <button class="view-details-btn">
-        View Details
-      </button>
-    `;
-
-    const popup = L.popup({
-      closeButton: false,
-      className: 'custom-popup',
-      offset: L.point(0, -20),
-      keepInView: true
-    }).setContent(popupContent);
-
-    markerElement.bindPopup(popup);
-
-    // Event listeners
-    const viewDetailsBtn = popupContent.querySelector('.view-details-btn');
-    if (viewDetailsBtn) {
-      viewDetailsBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
+      // Add click handler
+      popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
         window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
       });
+    } else {
+      // Create new marker
+      const markerElement = L.marker(latlng, { 
+        icon: MARKER_ICONS[marker.type] || MARKER_ICONS.default,
+        riseOnHover: true,
+        zIndexOffset: 1000,
+        permanent: true
+      }).addTo(markerGroup.value);
+
+      const popupContent = document.createElement('div');
+      popupContent.className = 'marker-popup';
+      popupContent.innerHTML = `
+        ${marker.images?.length > 0 ? `
+          <div class="popup-image">
+            <img src="${marker.images[0]}" alt="${marker.name}" />
+          </div>` : ''}
+        <h3>${marker.name || 'Unnamed Place'}</h3>
+        <button class="view-details-btn">
+          View Details
+        </button>
+      `;
+
+      const popup = L.popup({
+        closeButton: false,
+        className: 'custom-popup',
+        offset: L.point(0, -32)
+      }).setContent(popupContent);
+
+      markerElement.bindPopup(popup);
+
+      popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
+        window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
+      });
+
+      markerElement.on('click', () => {
+        setMapView(latlng);
+      });
+
+      markersRef.value.set(marker.id, markerElement);
     }
-
-    markerElement.on('click', () => {
-      setMapView(latlng);
-    });
-
-    newMarkersMap.set(marker.id, markerElement);
   });
 
-  // Remove old markers that aren't in the new set
+  // Remove markers that no longer exist
+  const currentIds = new Set(newMarkers.map(m => m.id));
   markersRef.value.forEach((marker, id) => {
-    if (!newMarkersMap.has(id)) {
+    if (!currentIds.has(id)) {
       markerGroup.value.removeLayer(marker);
+      markersRef.value.delete(id);
     }
   });
-
-  // Update reference
-  markersRef.value = newMarkersMap;
 }, { deep: true });
+
     const getCurrentLocation = () => {
       if (!navigator.geolocation) {
         emit('location-error', 'Geolocation not supported')
