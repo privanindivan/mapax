@@ -117,9 +117,8 @@ export default {
     const handleViewDetails = (e) => {
       const marker = markersRef.value.get(e.detail)
       if (marker) {
-        marker.openPopup()
-        const markerLatLng = marker.getLatLng()
-        setMapView(markerLatLng)
+        marker.element.openPopup()
+        setMapView(marker.latlng)
       }
       emit('marker-click', e.detail)
     }
@@ -132,98 +131,118 @@ export default {
         maxZoom: 19,
         zoomControl: false,
         maxBounds: L.latLngBounds(PHILIPPINES_BOUNDS.southwest, PHILIPPINES_BOUNDS.northeast),
-        maxBoundsViscosity: 1.0
+        maxBoundsViscosity: 1.0,
+        renderer: L.canvas()
       })
 
       L.tileLayer('https://tile.thunderforest.com/neighbourhood/{z}/{x}/{y}.png?apikey=375c923e2b8447249e6774bc2d2f3fa2', {
         attribution: '',
         minZoom: 15,
-        maxZoom: 19
+        maxZoom: 19,
+        updateWhenIdle: true,
+        updateWhenZooming: false
       }).addTo(map.value)
 
       markerGroup.value = L.layerGroup().addTo(map.value)
       window.addEventListener('viewDetails', handleViewDetails)
 
       map.value.on('click', (e) => {
-        if (props.isAddingMode && confirm('Add place here?')) {
-          const latlng = L.latLng(e.latlng.lat, e.latlng.lng)
-          if (tempMarker.value) {
-            markerGroup.value.removeLayer(tempMarker.value)
+        if (props.isAddingMode) {
+          if (confirm('Add place here?')) {
+            if (tempMarker.value) {
+              markerGroup.value.removeLayer(tempMarker.value)
+            }
+
+            const latlng = L.latLng(e.latlng.lat, e.latlng.lng)
+            tempMarker.value = L.marker(latlng, {
+              icon: MARKER_ICONS.default,
+              autoPanOnFocus: false,
+              bubblingMouseEvents: false
+            }).addTo(markerGroup.value)
+
+            emit('map-click', { 
+              lat: latlng.lat,
+              lng: latlng.lng
+            })
           }
-          tempMarker.value = L.marker(latlng, {
-            icon: MARKER_ICONS.default
-          }).addTo(markerGroup.value)
-          
-          emit('map-click', { 
-            lat: latlng.lat,
-            lng: latlng.lng
-          })
         }
       })
+
+      if (props.markers.length > 0) {
+        updateMarkers(props.markers)
+      }
     })
 
-  watch(() => props.markers, (newMarkers) => {
-  if (!map.value || !markerGroup.value) return
-  
-  markerGroup.value.clearLayers()
-  markersRef.value.clear()
+    const updateMarkers = (newMarkers) => {
+      if (!map.value || !markerGroup.value) return
+      
+      try {
+        markerGroup.value.clearLayers()
+        markersRef.value.clear()
 
-  newMarkers.forEach(marker => {
-    // Ensure coordinates are valid numbers
-    const lat = parseFloat(marker.lat || marker.latitude)
-    const lng = parseFloat(marker.lng || marker.longitude)
-    
-    if (isNaN(lat) || isNaN(lng)) {
-      console.error('Invalid coordinates for marker:', marker)
-      return
+        newMarkers.forEach(marker => {
+          const lat = parseFloat(marker.lat || marker.latitude)
+          const lng = parseFloat(marker.lng || marker.longitude)
+          
+          if (isNaN(lat) || isNaN(lng)) {
+            console.error('Invalid coordinates for marker:', marker)
+            return
+          }
+
+          const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default
+          const latlng = L.latLng(lat, lng)
+          
+          const markerElement = L.marker(latlng, { 
+            icon,
+            riseOnHover: true,
+            autoPanOnFocus: false,
+            bubblingMouseEvents: false
+          }).addTo(markerGroup.value)
+
+          const popupContent = document.createElement('div')
+          popupContent.className = 'marker-popup'
+          popupContent.innerHTML = `
+            ${marker.images?.length > 0 ? `
+              <div class="popup-image">
+                <img src="${marker.images[0]}" alt="${marker.name}" />
+              </div>` : ''}
+            <h3>${marker.name || 'Unnamed Place'}</h3>
+            <button class="view-details-btn">
+              View Details
+            </button>
+          `
+
+          const popup = L.popup({
+            closeButton: false,
+            className: 'custom-popup',
+            offset: L.point(0, -20),
+            autoPan: true,
+            keepInView: true
+          }).setContent(popupContent)
+
+          markerElement.bindPopup(popup)
+
+          popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
+            window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }))
+          })
+
+          markerElement.on('click', () => {
+            setMapView(latlng)
+          })
+
+          markersRef.value.set(marker.id, {
+            element: markerElement,
+            latlng: latlng
+          })
+        })
+      } catch (error) {
+        console.error('Error updating markers:', error)
+      }
     }
 
-    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default
-    const latlng = L.latLng(lat, lng)
-    
-    const markerElement = L.marker(latlng, { 
-      icon,
-      riseOnHover: true,
-      // Add these options to ensure marker stays in place
-      zIndexOffset: 1000,
-      riseOffset: 1000
-    }).addTo(markerGroup.value)
-
-    // Create popup content
-    const popupContent = document.createElement('div')
-    popupContent.className = 'marker-popup'
-    popupContent.innerHTML = `
-      ${marker.images?.length > 0 ? `
-        <div class="popup-image">
-          <img src="${marker.images[0]}" alt="${marker.name}" />
-        </div>` : ''}
-      <h3>${marker.name || 'Unnamed Place'}</h3>
-      <button class="view-details-btn">
-        View Details
-      </button>
-    `
-
-    const popup = L.popup({
-      closeButton: false,
-      className: 'custom-popup',
-      // Adjust offset to account for larger image
-      offset: L.point(0, -20)
-    }).setContent(popupContent)
-
-    markerElement.bindPopup(popup)
-
-    // Event handlers
-    popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
-      window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }))
-    })
-
-    markerElement.on('click', () => {
-      setMapView(latlng)
-    })
-
-    markersRef.value.set(marker.id, markerElement)
-  })
-}, { deep: true })
+    watch(() => props.markers, (newMarkers) => {
+      updateMarkers(newMarkers)
+    }, { deep: true })
 
     const getCurrentLocation = () => {
       if (!navigator.geolocation) {
@@ -314,6 +333,37 @@ export default {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+:deep(.custom-marker-wrapper) {
+  position: absolute !important;
+  transform-origin: center bottom !important;
+  pointer-events: none !important;
+}
+
+:deep(.marker-icon) {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  transform-origin: center !important;
+  transform: translateY(-50%) !important;
+  filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.3)) !important;
+  will-change: transform !important;
+}
+
+:deep(.leaflet-marker-pane) {
+  z-index: 600 !important;
+}
+
+:deep(.leaflet-popup-pane) {
+  z-index: 700 !important;
+}
+
+:deep(.leaflet-map-pane) {
+  z-index: 2 !important;
+}
+
+:deep(.leaflet-tile-pane) {
+  z-index: 1 !important;
+}
+
 :deep(.custom-popup) {
   min-width: 150px;
   margin-bottom: 15px !important;
@@ -344,41 +394,30 @@ export default {
 }
 
 :deep(.popup-image) {
-  width: 100%;
-  height: 120px;
+  width: 100% !important;
+  height: 180px !important;
+  margin: -10px -10px 10px -10px !important;
+  border-radius: 8px 8px 0 0 !important;
   overflow: hidden;
-  margin-bottom: 8px;
-  border-radius: 4px;
 }
 
 :deep(.popup-image img) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-:deep(.custom-marker-wrapper) {
-  position: absolute !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 32px !important;
-  height: 32px !important;
-  background: none !important;
-  border: none !important;
-  pointer-events: none !important;
-}
-
-:deep(.marker-icon) {
-  font-size: 24px !important;
-  line-height: 1 !important;
-  pointer-events: auto !important;
-  filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.3)) !important;
+  border-radius: 8px 8px 0 0;
 }
 
 :deep(.leaflet-popup-content-wrapper) {
+  padding: 0 !important;
+  overflow: hidden !important;
   border-radius: 8px !important;
   box-shadow: 0 3px 6px rgba(0,0,0,0.16) !important;
+}
+
+:deep(.leaflet-popup-content) {
+  margin: 0 !important;
+  width: 250px !important;
 }
 
 :deep(.leaflet-popup-tip) {
@@ -391,28 +430,5 @@ export default {
 :deep(.leaflet-bar),
 :deep(.leaflet-control) {
   display: none !important;
-}
-  :deep(.custom-popup .leaflet-popup-content-wrapper) {
-  padding: 0 !important;
-  overflow: hidden !important;
-}
-
-:deep(.custom-popup .leaflet-popup-content) {
-  margin: 0 !important;
-  width: 250px !important; /* Increased width */
-}
-
-:deep(.marker-popup) {
-  text-align: center;
-}
-
-:deep(.marker-popup h3) {
-  margin: 10px 0;
-  padding: 0 10px;
-}
-
-:deep(.view-details-btn) {
-  margin: 10px;
-  width: calc(100% - 20px);
 }
 </style>
