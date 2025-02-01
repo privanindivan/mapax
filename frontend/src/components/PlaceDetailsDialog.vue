@@ -25,23 +25,7 @@
     >
     <h2 v-else class="place-name">{{ place.name || 'Unnamed Place' }}</h2>
   </div>
-  <!-- Description with character limit -->
-  <textarea
-    v-if="isEditing"
-    v-model="editedPlace.description"
-    class="description-input"
-    rows="4"
-    maxlength="500"
-    placeholder="Add description... (max 500 characters)"
-  ></textarea>
-  <!-- Comment with character limit -->
-  <textarea
-    v-model="newComment"
-    class="comment-input"
-    placeholder="Add a comment... (max 200 characters)"
-    rows="3"
-    maxlength="200"
-  ></textarea>
+
       <!-- Images Section -->
       <div class="images-section">
         <h3>({{ editedPlace.images?.length || 0 }}/3)</h3>
@@ -145,7 +129,7 @@
             v-model="editedPlace.description"
             class="description-input"
             rows="4"
-            placeholder="Add description..."
+       placeholder="Add description... (max 500 characters)"
           ></textarea>
           <p v-else class="description-text">
             {{ editedPlace.description || 'No description available' }}
@@ -175,7 +159,7 @@
           <textarea
             v-model="newComment"
             class="comment-input"
-            placeholder="Add a comment..."
+            placeholder="Add a comment... (max 200 characters)"
             rows="3"
           ></textarea>
           <button 
