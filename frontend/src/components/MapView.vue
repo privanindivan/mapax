@@ -131,8 +131,7 @@ export default {
         maxZoom: 19,
         zoomControl: false,
         maxBounds: L.latLngBounds(PHILIPPINES_BOUNDS.southwest, PHILIPPINES_BOUNDS.northeast),
-        maxBoundsViscosity: 1.0
-       // Add these options
+        maxBoundsViscosity: 1.0,
     wheelDebounceTime: 100,
     wheelPxPerZoomLevel: 100,
     tap: false, // Disable tap handler
@@ -380,17 +379,6 @@ watch(() => props.markers, (newMarkers) => {
   object-fit: cover;
 }
 
-:deep(.custom-marker-wrapper) {
-  position: absolute !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 32px !important;
-  height: 32px !important;
-  background: none !important;
-  border: none !important;
-  pointer-events: none !important;
-}
 
 :deep(.marker-icon) {
   font-size: 24px !important;
