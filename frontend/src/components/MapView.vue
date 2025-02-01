@@ -164,7 +164,10 @@ export default {
 watch(() => props.markers, (newMarkers) => {
   if (!map.value || !markerGroup.value) return;
   
-  // Don't clear all layers every time, update selectively
+  // Clear and rebuild markers all at once - more stable approach
+  markerGroup.value.clearLayers();
+  markersRef.value.clear();
+
   newMarkers.forEach(marker => {
     const lat = parseFloat(marker.lat || marker.latitude);
     const lng = parseFloat(marker.lng || marker.longitude);
@@ -174,68 +177,53 @@ watch(() => props.markers, (newMarkers) => {
       return;
     }
 
-    const existingMarker = markersRef.value.get(marker.id);
+    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
     const latlng = L.latLng(lat, lng);
+    
+    const markerElement = L.marker(latlng, { 
+      icon,
+      riseOnHover: true,
+      zIndexOffset: 1000,
+      riseOffset: 1000,
+      bubblingMouseEvents: false // Prevent event bubbling
+    }).addTo(markerGroup.value);
 
-    // Only update if marker doesn't exist or position/type changed
-    if (!existingMarker || 
-        existingMarker.getLatLng().lat !== lat || 
-        existingMarker.getLatLng().lng !== lng ||
-        existingMarker.options.icon !== MARKER_ICONS[marker.type]) {
+    const popupContent = document.createElement('div');
+    popupContent.className = 'marker-popup';
+    popupContent.innerHTML = `
+      ${marker.images?.length > 0 ? `
+        <div class="popup-image">
+          <img src="${marker.images[0]}" alt="${marker.name}" />
+        </div>` : ''}
+      <h3>${marker.name || 'Unnamed Place'}</h3>
+      <button class="view-details-btn">
+        View Details
+      </button>
+    `;
 
-      if (existingMarker) {
-        markerGroup.value.removeLayer(existingMarker);
-      }
+    const popup = L.popup({
+      closeButton: false,
+      className: 'custom-popup',
+      offset: L.point(0, -20)
+    }).setContent(popupContent);
 
-      const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
-      
-      const markerElement = L.marker(latlng, { 
-        icon,
-        riseOnHover: true,
-        zIndexOffset: 1000
-      }).addTo(markerGroup.value);
+    markerElement.bindPopup(popup);
 
-      const popupContent = document.createElement('div');
-      popupContent.className = 'marker-popup';
-      popupContent.innerHTML = `
-        ${marker.images?.length > 0 ? `
-          <div class="popup-image">
-            <img src="${marker.images[0]}" alt="${marker.name}" />
-          </div>` : ''}
-        <h3>${marker.name || 'Unnamed Place'}</h3>
-        <button class="view-details-btn">
-          View Details
-        </button>
-      `;
-
-      const popup = L.popup({
-        closeButton: false,
-        className: 'custom-popup'
-      }).setContent(popupContent);
-
-      markerElement.bindPopup(popup);
-
-      popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
+    // Add event listeners
+    const viewDetailsBtn = popupContent.querySelector('.view-details-btn');
+    if (viewDetailsBtn) {
+      viewDetailsBtn.addEventListener('click', () => {
         window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
       });
-
-      markerElement.on('click', () => {
-        setMapView(latlng);
-      });
-
-      markersRef.value.set(marker.id, markerElement);
     }
-  });
 
-  // Remove only markers that no longer exist
-  markersRef.value.forEach((marker, id) => {
-    if (!newMarkers.find(m => m.id === id)) {
-      markerGroup.value.removeLayer(marker);
-      markersRef.value.delete(id);
-    }
+    markerElement.on('click', () => {
+      setMapView(latlng);
+    });
+
+    markersRef.value.set(marker.id, markerElement);
   });
 }, { deep: true });
-
     const getCurrentLocation = () => {
       if (!navigator.geolocation) {
         emit('location-error', 'Geolocation not supported')
@@ -431,12 +419,39 @@ watch(() => props.markers, (newMarkers) => {
 }
 
 :deep(.custom-marker-wrapper) {
-  transform-origin: center bottom !important;
+  position: absolute !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  background: none !important;
+  border: none !important;
+  pointer-events: none !important;
+  transform-origin: bottom center !important;
   will-change: transform !important;
+  z-index: 1000 !important;
 }
 
 :deep(.leaflet-zoom-animated) {
   will-change: transform !important;
   transform-origin: center !important;
 }
+:deep(.leaflet-marker-icon) {
+  transform-origin: bottom center !important;
+}
+
+:deep(.leaflet-marker-pane) {
+  z-index: 600 !important;
+  will-change: transform !important;
+}
+
+:deep(.leaflet-popup-pane) {
+  z-index: 610 !important;
+}
+
+:deep(.leaflet-map-pane canvas) {
+  z-index: 1 !important;
+}
+
 </style>
