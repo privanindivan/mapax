@@ -162,36 +162,33 @@ export default {
       })
     })
 
-  watch(() => props.markers, (newMarkers) => {
-  if (!map.value || !markerGroup.value) return
+watch(() => props.markers, (newMarkers) => {
+  if (!map.value || !markerGroup.value) return;
   
-  markerGroup.value.clearLayers()
-  markersRef.value.clear()
+  markerGroup.value.clearLayers();
+  markersRef.value.clear();
 
   newMarkers.forEach(marker => {
-    // Ensure coordinates are valid numbers
-    const lat = parseFloat(marker.lat || marker.latitude)
-    const lng = parseFloat(marker.lng || marker.longitude)
+    const lat = parseFloat(marker.lat || marker.latitude);
+    const lng = parseFloat(marker.lng || marker.longitude);
     
     if (isNaN(lat) || isNaN(lng)) {
-      console.error('Invalid coordinates for marker:', marker)
-      return
+      console.error('Invalid coordinates for marker:', marker);
+      return;
     }
 
-    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default
-    const latlng = L.latLng(lat, lng)
+    const icon = MARKER_ICONS[marker.type] || MARKER_ICONS.default;
+    const latlng = L.latLng(lat, lng);
     
     const markerElement = L.marker(latlng, { 
       icon,
       riseOnHover: true,
-      // Add these options to ensure marker stays in place
       zIndexOffset: 1000,
       riseOffset: 1000
-    }).addTo(markerGroup.value)
+    }).addTo(markerGroup.value);
 
-    // Create popup content
-    const popupContent = document.createElement('div')
-    popupContent.className = 'marker-popup'
+    const popupContent = document.createElement('div');
+    popupContent.className = 'marker-popup';
     popupContent.innerHTML = `
       ${marker.images?.length > 0 ? `
         <div class="popup-image">
@@ -201,29 +198,26 @@ export default {
       <button class="view-details-btn">
         View Details
       </button>
-    `
+    `;
 
     const popup = L.popup({
       closeButton: false,
-      className: 'custom-popup',
-      // Adjust offset to account for larger image
-      offset: L.point(0, -20)
-    }).setContent(popupContent)
+      className: 'custom-popup'
+    }).setContent(popupContent);
 
-    markerElement.bindPopup(popup)
+    markerElement.bindPopup(popup);
 
-    // Event handlers
     popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
-      window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }))
-    })
+      window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
+    });
 
     markerElement.on('click', () => {
-      setMapView(latlng)
-    })
+      setMapView(latlng);
+    });
 
-    markersRef.value.set(marker.id, markerElement)
-  })
-}, { deep: true })
+    markersRef.value.set(marker.id, markerElement);
+  });
+}, { deep: true });
 
     const getCurrentLocation = () => {
       if (!navigator.geolocation) {
