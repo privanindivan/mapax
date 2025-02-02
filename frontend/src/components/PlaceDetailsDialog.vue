@@ -313,36 +313,47 @@ const handleDelete = async () => {
 }
 const handleVote = async (direction) => {
   if (!user.value) {
-    alert('Please login to vote')
-    return
+    alert('Please login to vote');
+    return;
   }
 
   try {
-    // First get current place votes and voted_users
-    const { data: currentPlace } = await supabase
+    // Log current state for debugging
+    console.log('Current place:', editedPlace);
+    console.log('Current user:', user.value);
+
+    // First get the latest state from database
+    const { data: currentPlace, error: fetchError } = await supabase
       .from('places')
-      .select('votes, voted_users')
+      .select('*')
       .eq('id', editedPlace.id)
       .single();
 
+    if (fetchError) throw fetchError;
     if (!currentPlace) throw new Error('Place not found');
 
-    const votedUsers = Array.isArray(currentPlace.voted_users) 
-      ? currentPlace.voted_users 
-      : [];
+    console.log('Fetched current place:', currentPlace);
 
+    // Initialize or use existing voted_users array
+    const votedUsers = currentPlace.voted_users || [];
+    
     // Check if user already voted
     if (votedUsers.includes(user.value.id)) {
       alert('You have already voted on this place');
       return;
     }
 
-    // Calculate new vote count
+    // Calculate new vote
     const voteValue = direction === 'up' ? 1 : -1;
     const newVoteCount = (currentPlace.votes || 0) + voteValue;
     const newVotedUsers = [...votedUsers, user.value.id];
 
-    // Update the place
+    console.log('Updating with:', {
+      votes: newVoteCount,
+      voted_users: newVotedUsers
+    });
+
+    // Update in database
     const { error: updateError } = await supabase
       .from('places')
       .update({
@@ -351,61 +362,30 @@ const handleVote = async (direction) => {
       })
       .eq('id', editedPlace.id);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('Update error:', updateError);
+      throw updateError;
+    }
 
     // Update local state
     editedPlace.votes = newVoteCount;
     editedPlace.voted_users = newVotedUsers;
     hasVoted.value = true;
 
-    // Emit update event
-    emit('update', { ...editedPlace });
+    // Force reload of places to ensure consistency
+    emit('update', {
+      ...editedPlace,
+      votes: newVoteCount,
+      voted_users: newVotedUsers
+    });
+
+    console.log('Vote successful');
 
   } catch (error) {
     console.error('Vote error:', error);
     alert('Failed to save vote. Please try again.');
   }
 };
-    const handleImageUpload = async (event) => {
-      const file = event.target.files[0]
-      if (!file) return
-      
-      if (file.size > 5000000) {
-        alert('Image too large. Maximum size is 5MB.')
-        return
-      }
-      
-      try {
-        const base64 = await new Promise((resolve) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result)
-          reader.readAsDataURL(file)
-        })
-
-        const updatedImages = [...(editedPlace.images || []), base64].slice(-3)
-        
-        const { error } = await supabase
-          .from('places')
-          .update({ 
-            images: updatedImages,
-            last_edited: new Date().toISOString()
-          })
-          .eq('id', editedPlace.id)
-          .eq('user_id', user.value.id)
-
-        if (error) throw error
-        editedPlace.images = updatedImages
-        emit('update', { ...editedPlace })
-      } catch (error) {
-        console.error('Image upload error:', error)
-        alert('Failed to upload image')
-      } finally {
-        if (fileInput.value) {
-          fileInput.value.value = ''
-        }
-      }
-    }
-
     const removeImage = async (index) => {
       try {
         const updatedImages = [...(editedPlace.images || [])]
