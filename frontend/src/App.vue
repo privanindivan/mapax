@@ -125,7 +125,7 @@ export default {
     const handleMapError = () => {
       if (mapRef.value) {
         console.log('Forcing map refresh...');
-        mapRef.value.forceRefresh();
+        mapRef.value.refreshMap();
       }
     };
 
