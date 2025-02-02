@@ -390,24 +390,57 @@ async handleVotes(voteType) {
 }
 
 
+  const handleVote = async (direction) => {
+  if (!user.value) {
+    alert('Please login to vote');
+    return;
+  }
+
+  try {
+    // Get fresh data from server
+    const { data: place, error: fetchError } = await supabase
+      .from('places')
+      .select('votes, voted_users')
+      .eq('id', editedPlace.id)
+      .single();
+
+    if (fetchError) throw fetchError;
+    
+    const votedUsers = Array.isArray(place.voted_users) ? place.voted_users : [];
+    const currentVotes = place.votes || 0;
+
+    if (votedUsers.includes(user.value.id)) {
+      alert('You have already voted on this place');
+      return;
+    }
+
+    const voteValue = direction === 'up' ? 1 : -1;
+    const newVoteCount = currentVotes + voteValue;
+
+    // Update database
+    const { error: updateError } = await supabase
+      .from('places')
+      .update({
+        votes: newVoteCount,
+        voted_users: [...votedUsers, user.value.id]
+      })
+      .eq('id', editedPlace.id);
+
+    if (updateError) throw updateError;
+
     // Update local state
     editedPlace.votes = newVoteCount;
     editedPlace.voted_users = [...votedUsers, user.value.id];
     hasVoted.value = true;
 
-    // Emit update with complete data
-    emit('update', {
-      ...editedPlace,
-      votes: newVoteCount,
-      voted_users: [...votedUsers, user.value.id]
-    });
+    // Notify parent component
+    emit('update', editedPlace);
 
   } catch (error) {
     console.error('Vote error:', error);
-    alert('Failed to save vote. Please check console for details.');
+    alert('Failed to save vote. Please try again.');
   }
 };
-  
     const removeImage = async (index) => {
       try {
         const updatedImages = [...(editedPlace.images || [])]
