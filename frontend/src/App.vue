@@ -3,6 +3,7 @@
     <button 
       @click="toggleRanking" 
       :class="['ranking-button', { active: showRanking }]"
+style="z-index: 1000; padding: 8px 12px; font-size: 14px"
     >
       ⬆️ Rankings
     </button>
@@ -122,43 +123,40 @@ export default {
     const mapRef = ref(null);
     const selectedCategory = ref(null);
 
-    const handleMapError = () => {
-      if (mapRef.value) {
-        console.log('Forcing map refresh...');
+const handleMapError = () => {
+  if (mapRef.value) {
+    console.log('Refreshing map...');
+    mapRef.value.refreshMap(); // Correct method name
+  }
+};
+
+   const loadPlaces = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('places')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    
+    markers.value = data.map(place => ({
+      ...place,
+      lat: place.latitude,
+      lng: place.longitude,
+      images: place.images || [],
+      votes: place.votes || 0
+    }));
+    
+    // Add delayed map refresh
+    setTimeout(() => {
+      if (mapRef.value?.refreshMap) {
         mapRef.value.refreshMap();
       }
-    };
-
-    const loadPlaces = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('places')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        
-        markers.value = data.map(place => ({
-          id: place.id,
-          lat: place.latitude,
-          lng: place.longitude,
-          name: place.name,
-          description: place.description,
-          votes: place.votes || 0,
-          images: place.images || [],
-          comments: place.comments || [],
-          lastEdited: place.last_edited,
-          type: place.type || 'default',
-          user_id: place.user_id,
-          voted_users: place.voted_users || [],
-          created_at: place.created_at
-        }));
-       handleMapError();
-      } catch (error) {
-        console.error('Load error:', error);
-        markers.value = [];
-      }
-    };
+    }, 100);
+  } catch (error) {
+    console.error('Load error:', error);
+  }
+};
 
     const updatePlace = async (updatedPlace) => {
       try {
@@ -254,15 +252,14 @@ export default {
 
 
 
-   const selectMarker = (id) => {
+ const selectMarker = (id) => {
   selectedMarker.value = markers.value.find(m => m.id === id);
   if (selectedMarker.value && mapRef.value) {
     mapRef.value.setMapView([
       selectedMarker.value.lat,
       selectedMarker.value.lng
     ]);
-    // Force refresh after view change
-    setTimeout(handleMapError, 500);
+    setTimeout(() => mapRef.value.refreshMap(), 300);
   }
 };
 
