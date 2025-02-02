@@ -244,85 +244,65 @@ const formattedLastEdited = computed(() => {
   }
 });
 
-   const handleVote = async (direction) => {
+const handleVote = async (direction) => {
   if (!user.value) {
     alert('Please login to vote');
     return;
   }
 
-  try {
-    const voteValue = direction === 'up' ? 1 : -1;
-    const updatedVotes = (editedPlace.votes || 0) + voteValue;
-    const updatedVotedUsers = [...(editedPlace.voted_users || []), user.value.id];
+  const voteValue = direction === 'up' ? 1 : -1;
 
-    const { error } = await supabase
+  try {
+    // First get the current place data
+    const { data: currentPlace } = await supabase
       .from('places')
-      .update({ 
-        votes: updatedVotes,
-        voted_users: updatedVotedUsers 
+      .select('votes, voted_users')
+      .eq('id', editedPlace.id)
+      .single();
+
+    if (!currentPlace) {
+      throw new Error('Place not found');
+    }
+
+    // Initialize arrays if they don't exist
+    const votedUsers = currentPlace.voted_users || [];
+    
+    // Check if user already voted
+    if (votedUsers.includes(user.value.id)) {
+      alert('You have already voted on this place');
+      return;
+    }
+
+    // Calculate new vote count
+    const newVoteCount = (currentPlace.votes || 0) + voteValue;
+    
+    // Add user to voted users
+    votedUsers.push(user.value.id);
+
+    // Update the place with new vote count and voted users
+    const { error: updateError } = await supabase
+      .from('places')
+      .update({
+        votes: newVoteCount,
+        voted_users: votedUsers
       })
       .eq('id', editedPlace.id);
 
-    if (error) throw error;
+    if (updateError) throw updateError;
 
-    editedPlace.votes = updatedVotes;
-    editedPlace.voted_users = updatedVotedUsers;
+    // Update local state
+    editedPlace.votes = newVoteCount;
+    editedPlace.voted_users = votedUsers;
     hasVoted.value = true;
-    
+
+    // Emit update event
     emit('update', { ...editedPlace });
+
   } catch (error) {
     console.error('Vote error:', error);
-    alert('Failed to save vote');
+    alert('Failed to save vote. Please try again.');
   }
 };
-
-    const toggleEdit = async () => {
-      if (!user.value) {
-        alert('Please login to edit')
-        return
-      }
-
-      if (isEditing.value) {
-        try {
-          if (editedPlace.user_id !== user.value.id) {
-            throw new Error('Only the creator can edit this place')
-          }
-
-          const updates = {
-            name: editedPlace.name,
-            description: editedPlace.description,
-            type: editedPlace.type,
-            last_edited: new Date().toISOString()
-          }
-
-          const { error } = await supabase
-            .from('places')
-            .update(updates)
-            .eq('id', editedPlace.id)
-            .eq('user_id', user.value.id)
-
-          if (error) throw error
-          
-          const updatedPlace = {
-            ...editedPlace,
-            ...updates
-          }
-          
-          Object.assign(editedPlace, updatedPlace)
-          emit('update', updatedPlace)
-          isEditing.value = false
-        } catch (error) {
-          console.error('Edit error:', error)
-          alert('Failed to save changes. Only the creator can edit.')
-        }
-      } else {
-        if (editedPlace.user_id !== user.value.id) {
-          alert('Only the creator can edit this place')
-          return
-        }
-        isEditing.value = true
-      }
-    }
 
     const handleDelete = async () => {
       if (!user.value) {
