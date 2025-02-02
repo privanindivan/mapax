@@ -244,21 +244,16 @@ const formattedLastEdited = computed(() => {
   }
 });
 
-    const handleVote = async (direction) => {
+   const handleVote = async (direction) => {
   if (!user.value) {
-    alert('Please login to vote')
-    return
-  }
-
-  if (editedPlace.voted_users?.includes(user.value.id)) {
-    alert('You have already voted on this place')
-    return
+    alert('Please login to vote');
+    return;
   }
 
   try {
-    const voteValue = direction === 'up' ? 1 : -1
-    const updatedVotes = (editedPlace.votes || 0) + voteValue
-    const updatedVotedUsers = [...(editedPlace.voted_users || []), user.value.id]
+    const voteValue = direction === 'up' ? 1 : -1;
+    const updatedVotes = (editedPlace.votes || 0) + voteValue;
+    const updatedVotedUsers = [...(editedPlace.voted_users || []), user.value.id];
 
     const { error } = await supabase
       .from('places')
@@ -266,36 +261,20 @@ const formattedLastEdited = computed(() => {
         votes: updatedVotes,
         voted_users: updatedVotedUsers 
       })
-      .eq('id', editedPlace.id)
-      .select('*')
+      .eq('id', editedPlace.id);
 
-    if (error) throw error
+    if (error) throw error;
 
-    editedPlace.votes = updatedVotes
-    editedPlace.voted_users = updatedVotedUsers
-    hasVoted.value = true
-
-    // Emit update with complete data
-    emit('update', {
-      ...editedPlace,
-      votes: updatedVotes,
-      voted_users: updatedVotedUsers
-    })
-  } catch (error) {
-    console.error('Vote error:', error)
-    // Reload place data on error
-    const { data: refreshedData, error: fetchError } = await supabase
-      .from('places')
-      .select('*')
-      .eq('id', editedPlace.id)
-      .single()
+    editedPlace.votes = updatedVotes;
+    editedPlace.voted_users = updatedVotedUsers;
+    hasVoted.value = true;
     
-    if (!fetchError && refreshedData) {
-      Object.assign(editedPlace, refreshedData)
-      emit('update', { ...editedPlace })
-    }
+    emit('update', { ...editedPlace });
+  } catch (error) {
+    console.error('Vote error:', error);
+    alert('Failed to save vote');
   }
-}
+};
 
     const toggleEdit = async () => {
       if (!user.value) {
