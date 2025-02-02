@@ -166,47 +166,28 @@ export default {
       })
     })
 
+// Replace your current watch function in MapView.vue with this:
 watch(() => props.markers, (newMarkers) => {
   if (!map.value || !markerGroup.value) return;
   
-  // Track processed markers
-  const processedMarkers = new Set();
-  
+  // Clear all existing markers and rebuild
+  markerGroup.value.clearLayers();
+  markersRef.value.clear();
+
   newMarkers.forEach(marker => {
-    const lat = parseFloat(marker.lat || marker.latitude);
-    const lng = parseFloat(marker.lng || marker.longitude);
+    // Ensure coordinates are valid numbers
+    const lat = Number(marker.lat || marker.latitude);
+    const lng = Number(marker.lng || marker.longitude);
     
-    if (isNaN(lat) || isNaN(lng)) {
-      console.error('Invalid coordinates for marker:', marker);
-      return;
-    }
+    if (isNaN(lat) || isNaN(lng)) return;
 
-    const latlng = L.latLng(lat, lng);
-    processedMarkers.add(marker.id);
+    // Create marker with fixed coordinates
+    const markerElement = L.marker([lat, lng], { 
+      icon: MARKER_ICONS[marker.type] || MARKER_ICONS.default,
+      zIndexOffset: 1000,
+      autoPan: false
+    }).addTo(markerGroup.value);
 
-    let markerElement = markersRef.value.get(marker.id);
-    
-    if (markerElement) {
-      // Update existing marker position
-      markerElement.setLatLng(latlng);
-      
-      // Update icon if type changed
-      if (markerElement.options.icon !== MARKER_ICONS[marker.type]) {
-        markerElement.setIcon(MARKER_ICONS[marker.type] || MARKER_ICONS.default);
-      }
-    } else {
-      // Create new marker
-      markerElement = L.marker(latlng, {
-        icon: MARKER_ICONS[marker.type] || MARKER_ICONS.default,
-        riseOnHover: true,
-        zIndexOffset: 1000,
-        keyboard: false,
-        pane: 'markerPane',
-        bubblingMouseEvents: false
-      }).addTo(markerGroup.value);
-    }
-
-    // Always update popup content
     const popupContent = document.createElement('div');
     popupContent.className = 'marker-popup';
     popupContent.innerHTML = `
@@ -218,33 +199,17 @@ watch(() => props.markers, (newMarkers) => {
       <button class="view-details-btn">View Details</button>
     `;
 
-    const popup = L.popup({
-      closeButton: false,
-      className: 'custom-popup',
-      offset: L.point(0, -32),
-      autoPan: false
-    }).setContent(popupContent);
+    markerElement.bindPopup(popupContent);
 
-    markerElement.unbindPopup().bindPopup(popup);
-
-    popupContent.querySelector('.view-details-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
+    popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
       window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
     });
 
     markerElement.on('click', () => {
-      setMapView(latlng);
+      setMapView([lat, lng]);
     });
 
     markersRef.value.set(marker.id, markerElement);
-  });
-
-  // Remove old markers
-  markersRef.value.forEach((marker, id) => {
-    if (!processedMarkers.has(id)) {
-      markerGroup.value.removeLayer(marker);
-      markersRef.value.delete(id);
-    }
   });
 }, { deep: true });
 
