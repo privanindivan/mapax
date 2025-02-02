@@ -121,7 +121,46 @@ export default {
     const showAuthModal = ref(false);
     const mapRef = ref(null);
     const selectedCategory = ref(null);
+ 
 
+  const handleMapError = () => {
+    if (mapRef.value) {
+      console.log('Forcing map refresh...')
+      mapRef.value.forceRefresh()
+    }
+  }
+
+  // Add error handler to updatePlace
+  const updatePlace = async (updatedPlace) => {
+    try {
+      // Update local state immediately
+      const index = markers.value.findIndex(p => p.id === updatedPlace.id)
+      if (index !== -1) {
+        markers.value = markers.value.map(marker => 
+          marker.id === updatedPlace.id ? {
+            ...marker,
+            ...updatedPlace,
+            lat: updatedPlace.latitude || updatedPlace.lat,
+            lng: updatedPlace.longitude || updatedPlace.lng,
+            type: updatedPlace.type,
+            images: updatedPlace.images,
+            votes: updatedPlace.votes,
+            voted_users: updatedPlace.voted_users
+          } : marker
+        )
+      }
+
+      // Ensure changes persist
+      await loadPlaces()
+      
+      // Force map refresh after update
+      handleMapError()
+    } catch (error) {
+      console.error('Update error:', error)
+      handleMapError() // Try to recover from error
+      await loadPlaces() // Fallback to reload
+    }
+  }
     const sortedPlaces = computed(() => {
       return [...markers.value]
         .filter(m => !selectedCategory.value || m.type === selectedCategory.value)
@@ -166,33 +205,7 @@ export default {
       }
     };
 
-  const updatePlace = async (updatedPlace) => {
-  try {
-    // Update local state immediately
-    const index = markers.value.findIndex(p => p.id === updatedPlace.id);
-    if (index !== -1) {
-      // Create new array to force reactivity
-      markers.value = markers.value.map(marker => 
-        marker.id === updatedPlace.id ? {
-          ...marker,
-          ...updatedPlace,
-          lat: updatedPlace.latitude || updatedPlace.lat,
-          lng: updatedPlace.longitude || updatedPlace.lng,
-          type: updatedPlace.type,
-          images: updatedPlace.images,
-          votes: updatedPlace.votes,
-          voted_users: updatedPlace.voted_users
-        } : marker
-      );
-    }
 
-    // Ensure changes persist
-    await loadPlaces();
-  } catch (error) {
-    console.error('Update error:', error);
-    await loadPlaces(); // Fallback to reload
-  }
-};
 
     const handleMapClick = async (latlng) => {
       if (!user.value) {
@@ -232,6 +245,7 @@ export default {
           
           isAddingMode.value = false;
           selectMarker(data.id);
+          handleMapError() ;
         } catch (error) {
           console.error('Add error:', error);
           alert('Failed to add place');
@@ -247,6 +261,7 @@ export default {
       } catch (error) {
         console.error('Delete error:', error);
         alert('Failed to delete place');
+        handleMapError();
       }
     };
 
@@ -295,6 +310,7 @@ export default {
     });
 
     return {
+    handleMapError,
       markers,
       selectedMarker,
       sortedPlaces,
