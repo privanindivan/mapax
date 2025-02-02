@@ -378,54 +378,27 @@ const handleVote = async (direction) => {
     const newVoteCount = currentVotes + voteValue;
 
     // Only update votes and voted_users, nothing else
-    const { data: updateData, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from('places')
       .update({
         votes: newVoteCount,
         voted_users: [...votedUsers, user.value.id]
       })
-      .eq('id', editedPlace.id)
-      .select()
-      .single();
+      .eq('id', editedPlace.id);
 
-    if (updateError) {
-      console.error('Vote update failed:', updateError);
-      throw updateError;
-    }
+    if (updateError) throw updateError;
 
     // Update local state
     editedPlace.votes = newVoteCount;
     editedPlace.voted_users = [...votedUsers, user.value.id];
     hasVoted.value = true;
 
-    // Emit update with the new data
-    emit('update', {
-      ...editedPlace,
-      votes: newVoteCount,
-      voted_users: [...votedUsers, user.value.id]
-    });
+    // Emit update
+    emit('update', editedPlace);
 
   } catch (error) {
     console.error('Vote error:', error);
-    alert('Failed to save vote. Please try again.');
-  }
-};
-
-    // Update local state
-    editedPlace.votes = newVoteCount;
-    editedPlace.voted_users = [...votedUsers, user.value.id];
-    hasVoted.value = true;
-
-    // Emit update with complete data
-    emit('update', {
-      ...editedPlace,
-      votes: newVoteCount,
-      voted_users: [...votedUsers, user.value.id]
-    });
-
-  } catch (error) {
-    console.error('Vote error:', error);
-    alert('Failed to save vote. Please check console for details.');
+    alert('Failed to save vote');
   }
 };
   
