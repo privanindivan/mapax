@@ -177,44 +177,56 @@ const handleViewDetails = (e) => {
       }
     }
 
-    const createMarkerElement = (marker) => {
-      const latlng = L.latLng(
-        parseFloat(marker.lat || marker.latitude),
-        parseFloat(marker.lng || marker.longitude)
-      )
+  // In MapView.vue, update the createMarkerElement function:
 
-      const markerElement = L.marker(latlng, {
-        icon: MARKER_ICONS[marker.type] || MARKER_ICONS.default,
-        autoPanOnFocus: false,
-        riseOnHover: true
-      })
+const createMarkerElement = (marker) => {
+  const latlng = L.latLng(
+    parseFloat(marker.lat || marker.latitude),
+    parseFloat(marker.lng || marker.longitude)
+  );
 
-      const popupContent = document.createElement('div')
-      popupContent.className = 'marker-popup'
-      popupContent.innerHTML = `
-        ${marker.images?.length > 0 ? `
-          <div class="popup-image">
-            <img src="${marker.images[0]}" alt="${marker.name}" />
-          </div>` : ''}
-        <h3>${marker.name || 'Unnamed Place'}</h3>
-        <button class="view-details-btn">View Details</button>
-      `
+  const markerElement = L.marker(latlng, {
+    icon: MARKER_ICONS[marker.type] || MARKER_ICONS.default,
+    autoPanOnFocus: false,
+    riseOnHover: true,
+    bubblingMouseEvents: false,
+    zIndexOffset: 1000, // Keep markers above base layers
+    autoPan: false // Prevent automatic panning
+  });
 
-      const popup = L.popup({
-        closeButton: false,
-        className: 'custom-popup',
-        maxWidth: 300,
-        autoPan: false
-      }).setContent(popupContent)
+  markerElement.options.riseOffset = 1000; // Ensure proper stacking
 
-      markerElement.bindPopup(popup)
+  const popupContent = document.createElement('div');
+  popupContent.className = 'marker-popup';
+  popupContent.innerHTML = `
+    ${marker.images?.length > 0 ? `
+      <div class="popup-image">
+        <img src="${marker.images[0]}" alt="${marker.name}" />
+      </div>` : ''}
+    <h3>${marker.name || 'Unnamed Place'}</h3>
+    <button class="view-details-btn">View Details</button>
+  `;
 
-      popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
-        emit('marker-click', marker.id)
-      })
+  const popup = L.popup({
+    closeButton: false,
+    className: 'custom-popup',
+    maxWidth: 300,
+    autoPan: false,
+    closeOnClick: false,
+    autoClose: false
+  }).setContent(popupContent);
 
-      return markerElement
-    }
+  markerElement.bindPopup(popup);
+
+  // Ensure marker stays visible and properly positioned
+  markerElement.setZIndexOffset(1000);
+
+  popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
+    emit('marker-click', marker.id);
+  });
+
+  return markerElement;
+};
 
     onMounted(() => {
       map.value = L.map('map', {
