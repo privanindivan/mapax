@@ -350,63 +350,45 @@ const handleImageUpload = async (event) => {
   }
 };
 
-const handleVote = async (direction) => {
-  if (!user.value) {
-    alert('Please login to vote');
+async handleVotes(voteType) {
+  // Quick null checks to prevent reading 'content' of null
+  if (!this.place || !this.place.content) {
+    console.error("Error: Place data or content is missing.");
     return;
   }
 
-  try {
-    // First get fresh data
-    const { data: place, error: fetchError } = await supabase
-      .from('places')
-      .select('votes, voted_users')
-      .eq('id', editedPlace.id)
-      .single();
-
-    if (fetchError) throw fetchError;
-    
-    const votedUsers = Array.isArray(place.voted_users) ? place.voted_users : [];
-    const currentVotes = typeof place.votes === 'number' ? place.votes : 0;
-
-    if (votedUsers.includes(user.value.id)) {
-      alert('You have already voted on this place');
-      return;
-    }
-
-    const voteValue = direction === 'up' ? 1 : -1;
-    const newVoteCount = currentVotes + voteValue;
-
-    // Only update votes and voted_users, nothing else
-    const { data: updateData, error: updateError } = await supabase
-      .from('places')
-      .update({
-        votes: newVoteCount,
-        voted_users: [...votedUsers, user.value.id]
-      })
-      .eq('id', editedPlace.id)
-      .select()
-      .single();
-
-       if (updateError) throw updateError;
-
-    // Update local state
-    editedPlace.votes = newVoteCount;
-    editedPlace.voted_users = [...votedUsers, user.value.id];
-    hasVoted.value = true;
-
-    // Emit update
-    emit('update', {
-      ...editedPlace,
-      votes: newVoteCount,
-      voted_users: [...votedUsers, user.value.id]
-    });
-
-  } catch (error) {
-    console.error('Vote error:', error);
-    alert('Failed to save vote. Please try again.');
+  // Ensure voted_users exists as an array
+  if (!Array.isArray(this.place.voted_users)) {
+    this.place.voted_users = [];
   }
-};
+
+  // Prevent duplicate voting (vote once per account)
+  if (this.place.voted_users.includes(this.userId)) {
+    console.log("You have already voted on this place.");
+    return;
+  }
+
+  // Determine vote change: +1 for upvote, -1 for downvote
+  const voteChange = voteType === 'upvote' ? 1 : -1;
+  const newVotes = this.place.votes + voteChange;
+  const newVotedUsers = [...this.place.voted_users, this.userId];
+
+  // Update Supabase: Ensure your Supabase client is available as this.$supabase
+  const { data, error } = await this.$supabase
+    .from('places')
+    .update({ votes: newVotes, voted_users: newVotedUsers })
+    .eq('id', this.place.id);
+
+  if (error) {
+    console.error("Error updating vote:", error);
+  } else {
+    console.log("Vote updated successfully", data);
+    // Optionally update local state
+    this.place.votes = newVotes;
+    this.place.voted_users = newVotedUsers;
+  }
+}
+
 
     // Update local state
     editedPlace.votes = newVoteCount;
