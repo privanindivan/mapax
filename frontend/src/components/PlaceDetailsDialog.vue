@@ -283,7 +283,34 @@ const formattedLastEdited = computed(() => {
     return 'Not edited';
   }
 });
+const handleDelete = async () => {
+  if (!user.value) {
+    alert('Please login to delete')
+    return
+  }
 
+  if (editedPlace.user_id !== user.value.id) {
+    alert('Only the creator can delete this place')
+    return
+  }
+
+  if (!confirm('Are you sure you want to delete this place?')) return
+  
+  try {
+    const { error } = await supabase
+      .from('places')
+      .delete()
+      .eq('id', editedPlace.id)
+      .eq('user_id', user.value.id)
+
+    if (error) throw error
+    emit('delete', editedPlace.id)
+    emit('close')
+  } catch (error) {
+    console.error('Delete error:', error)
+    alert('Failed to delete place')
+  }
+}
 const handleVote = async (direction) => {
   if (!user.value) {
     alert('Please login to vote');
