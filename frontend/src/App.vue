@@ -153,6 +153,7 @@ export default {
           voted_users: place.voted_users || [],
           created_at: place.created_at
         }));
+       handleMapError();
       } catch (error) {
         console.error('Load error:', error);
         markers.value = [];
@@ -253,15 +254,17 @@ export default {
 
 
 
-    const selectMarker = (id) => {
-      selectedMarker.value = markers.value.find(m => m.id === id);
-      if (selectedMarker.value && mapRef.value) {
-        mapRef.value.setMapView([
-          selectedMarker.value.lat,
-          selectedMarker.value.lng
-        ]);
-      }
-    };
+   const selectMarker = (id) => {
+  selectedMarker.value = markers.value.find(m => m.id === id);
+  if (selectedMarker.value && mapRef.value) {
+    mapRef.value.setMapView([
+      selectedMarker.value.lat,
+      selectedMarker.value.lng
+    ]);
+    // Force refresh after view change
+    setTimeout(handleMapError, 500);
+  }
+};
 
     const selectAndCloseRanking = (id) => {
       const marker = markers.value.find(m => m.id === id);
