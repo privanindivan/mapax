@@ -108,6 +108,13 @@ setup(props, { emit }) {
     const MAX_ERRORS = 3
     const ERROR_RESET_INTERVAL = 10000
 
+const validateMarkers = () => {
+  if (markersMap.value.size !== props.markers.length) {
+    console.warn('Marker mismatch - performing corrective refresh');
+    refreshMap();
+  }
+};
+
     const handleMapError = () => {
       errorCount++
       if (errorCount >= MAX_ERRORS) {
@@ -120,31 +127,47 @@ setup(props, { emit }) {
       }, ERROR_RESET_INTERVAL)
     }
 
-    const refreshMap = () => {
-      if (!map.value) return
-      try {
-        markerGroup.value.clearLayers()
-        markersMap.value.clear()
+   const refreshMap = () => {
+  if (!map.value) return;
+  
+  // Clear existing layers properly
+  markerGroup.value.clearLayers();
+  markersMap.value.clear();
 
-        props.markers.forEach(marker => {
-          try {
-            const lat = parseFloat(marker.lat || marker.latitude)
-            const lng = parseFloat(marker.lng || marker.longitude)
-            
-            if (isNaN(lat) || isNaN(lng)) return
-
-            const markerElement = createMarkerElement(marker)
-            markerElement.addTo(markerGroup.value)
-            markersMap.value.set(marker.id, markerElement)
-          } catch (err) {
-            console.error('Error adding marker:', err)
-          }
-        })
-      } catch (err) {
-        console.error('Error refreshing map:', err)
+  // Add fresh markers with validation
+  props.markers.forEach(marker => {
+    try {
+      const lat = parseFloat(marker.lat || marker.latitude);
+      const lng = parseFloat(marker.lng || marker.longitude);
+      
+      if (isNaN(lat) || isNaN(lng)) {
+        console.warn('Invalid coordinates for marker:', marker.id);
+        return;
       }
-    }
 
+      const markerElement = createMarkerElement(marker);
+      markerElement.addTo(markerGroup.value);
+      markersMap.value.set(marker.id, markerElement);
+    } catch (err) {
+      console.error('Marker creation error:', err);
+    }
+  });
+
+  // Force map redraw
+  map.value.invalidateSize(true);
+};
+
+// Update handleViewDetails
+const handleViewDetails = (e) => {
+  setTimeout(() => {
+    const marker = markersMap.value.get(e.detail);
+    if (marker && map.value) {
+      marker.addTo(markerGroup.value); // Force layer refresh
+      marker.openPopup();
+      setMapView(marker.getLatLng());
+    }
+  }, 150);
+};
     const setMapView = (latlng, zoom = 18) => {
       if (map.value) {
         map.value.setView(latlng, zoom, {
@@ -192,13 +215,6 @@ setup(props, { emit }) {
 
       return markerElement
     }
-const handleViewDetails = (e) => {
-      const marker = markersMap.value.get(e.detail)
-      if (marker) {
-        marker.openPopup()
-        setMapView(marker.getLatLng())
-      }
-    }
 
     onMounted(() => {
       map.value = L.map('map', {
@@ -229,9 +245,7 @@ const handleViewDetails = (e) => {
         }, 1000)
       })
 
-      setInterval(() => {
-        refreshMap()
-      }, 30000)
+
 
       setTimeout(refreshMap, 1000)
 
@@ -305,7 +319,8 @@ const handleViewDetails = (e) => {
       getCurrentLocation,
       toggleAddMode,
       setMapView,
-      refreshMap
+      refreshMap,
+validateMarkers 
     }
   }
 }
