@@ -1,3 +1,4 @@
+// MapView.vue
 <template>
   <div class="map-wrapper">
     <h2 class="map-heading">MAPA</h2>
@@ -25,64 +26,64 @@ const GMA_COORDINATES = [14.293054, 121.005381]
 
 const MARKER_ICONS = {
   office: L.divIcon({
-    html: '<div class="marker-icon">🏛️</div>',
-    className: 'custom-marker-wrapper',
+    html: '🏛️',
+    className: 'custom-marker',
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32]
   }),
   building: L.divIcon({
-    html: '<div class="marker-icon">🏢</div>',
-    className: 'custom-marker-wrapper',
+    html: '🏢',
+    className: 'custom-marker', 
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32]
   }),
   restaurant: L.divIcon({
-    html: '<div class="marker-icon">🥣</div>',
-    className: 'custom-marker-wrapper',
+    html: '🥣',
+    className: 'custom-marker',
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32]
   }),
   shipping: L.divIcon({
-    html: '<div class="marker-icon">📦</div>',
-    className: 'custom-marker-wrapper',
+    html: '📦',
+    className: 'custom-marker',
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32]
   }),
   laundry: L.divIcon({
-    html: '<div class="marker-icon">👕</div>',
-    className: 'custom-marker-wrapper',
+    html: '👕',
+    className: 'custom-marker',
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32]
   }),
   church: L.divIcon({
-    html: '<div class="marker-icon">⛪</div>',
-    className: 'custom-marker-wrapper',
+    html: '⛪',
+    className: 'custom-marker',
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32]
   }),
   store: L.divIcon({
-    html: '<div class="marker-icon">🏪</div>',
-    className: 'custom-marker-wrapper',
+    html: '🏪',
+    className: 'custom-marker',
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32]
   }),
   barber: L.divIcon({
-    html: '<div class="marker-icon">✂️</div>',
-    className: 'custom-marker-wrapper',
+    html: '✂️',
+    className: 'custom-marker',
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32]
   }),
   default: L.divIcon({
-    html: '<div class="marker-icon">📍</div>',
-    className: 'custom-marker-wrapper',
+    html: '📍',
+    className: 'custom-marker',
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32]
@@ -103,8 +104,7 @@ export default {
     const markerGroup = ref(null)
     const userLocationMarker = ref(null)
     const tempMarker = ref(null)
-    const markersRef = ref(new Map())
-    const stableMarkers = ref(new Map())
+    const markersMap = ref(new Map())
 
     const setMapView = (latlng, zoom = 18) => {
       if (map.value) {
@@ -115,103 +115,132 @@ export default {
       }
     }
 
-   const handleViewDetails = (e) => {
-  const marker = stableMarkers.value.get(e.detail);
-  if (marker) {
-    marker.openPopup();
-    setMapView(marker.getLatLng());
-  }
-  emit('marker-click', e.detail);
-   };
+    const createMarkerElement = (marker) => {
+      const latlng = L.latLng(
+        parseFloat(marker.lat || marker.latitude),
+        parseFloat(marker.lng || marker.longitude)
+      )
+
+      const markerElement = L.marker(latlng, {
+        icon: MARKER_ICONS[marker.type] || MARKER_ICONS.default,
+        autoPanOnFocus: false,
+        riseOnHover: true
+      })
+
+      const popupContent = document.createElement('div')
+      popupContent.className = 'marker-popup'
+      popupContent.innerHTML = `
+        ${marker.images?.length > 0 ? `
+          <div class="popup-image">
+            <img src="${marker.images[0]}" alt="${marker.name}" />
+          </div>` : ''}
+        <h3>${marker.name || 'Unnamed Place'}</h3>
+        <button class="view-details-btn">View Details</button>
+      `
+
+      const popup = L.popup({
+        closeButton: false,
+        className: 'custom-popup',
+        maxWidth: 300,
+        autoPan: false
+      }).setContent(popupContent)
+
+      markerElement.bindPopup(popup)
+
+      popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
+        emit('marker-click', marker.id)
+      })
+
+      return markerElement
+    }
+
+    const handleViewDetails = (e) => {
+      const marker = markersMap.value.get(e.detail)
+      if (marker) {
+        marker.openPopup()
+        setMapView(marker.getLatLng())
+      }
+    }
+
     onMounted(() => {
-  map.value = L.map('map', {
-    center: GMA_COORDINATES,
-    zoom: 16,
-    minZoom: 15,
-    maxZoom: 19,
-    zoomControl: false,
-    maxBounds: L.latLngBounds(PHILIPPINES_BOUNDS.southwest, PHILIPPINES_BOUNDS.northeast),
-    maxBoundsViscosity: 1.0,
-    wheelDebounceTime: 50,
-    wheelPxPerZoomLevel: 60,
-    zoomSnap: 0.5,
-    zoomDelta: 0.5,
-    trackResize: true,
-    renderer: L.canvas()
-  });
+      // Initialize map
+      map.value = L.map('map', {
+        center: GMA_COORDINATES,
+        zoom: 16,
+        minZoom: 15,
+        maxZoom: 19,
+        zoomControl: false,
+        maxBounds: L.latLngBounds(PHILIPPINES_BOUNDS.southwest, PHILIPPINES_BOUNDS.northeast),
+        maxBoundsViscosity: 1.0,
+        preferCanvas: true
+      })
+
+      // Add tile layer
       L.tileLayer('https://tile.thunderforest.com/neighbourhood/{z}/{x}/{y}.png?apikey=375c923e2b8447249e6774bc2d2f3fa2', {
         attribution: '',
         minZoom: 15,
         maxZoom: 19
       }).addTo(map.value)
 
-      markerGroup.value = L.layerGroup().addTo(map.value)
+      markerGroup.value = L.featureGroup().addTo(map.value)
+
       window.addEventListener('viewDetails', handleViewDetails)
 
+      // Handle map clicks
       map.value.on('click', (e) => {
-        if (props.isAddingMode && confirm('Add place here?')) {
-          const latlng = L.latLng(e.latlng.lat, e.latlng.lng)
+        if (props.isAddingMode) {
+          const latlng = e.latlng
+          emit('map-click', { lat: latlng.lat, lng: latlng.lng })
+          
           if (tempMarker.value) {
             markerGroup.value.removeLayer(tempMarker.value)
           }
+
           tempMarker.value = L.marker(latlng, {
-            icon: MARKER_ICONS.default
+            icon: MARKER_ICONS.default,
+            autoPanOnFocus: false
           }).addTo(markerGroup.value)
-          
-          emit('map-click', { 
-            lat: latlng.lat,
-            lng: latlng.lng
-          })
         }
       })
     })
 
-// Replace your current watch function in MapView.vue with this:
-watch(() => props.markers, (newMarkers) => {
-  if (!map.value || !markerGroup.value) return;
-  
-  // Clear all existing markers and rebuild
-  markerGroup.value.clearLayers();
-  markersRef.value.clear();
+    // Watch for marker changes
+    watch(() => props.markers, (newMarkers) => {
+      if (!map.value || !markerGroup.value) return
 
-  newMarkers.forEach(marker => {
-    // Ensure coordinates are valid numbers
-    const lat = Number(marker.lat || marker.latitude);
-    const lng = Number(marker.lng || marker.longitude);
-    
-    if (isNaN(lat) || isNaN(lng)) return;
+      // Keep track of current marker IDs
+      const currentIds = new Set()
 
-    // Create marker with fixed coordinates
-    const markerElement = L.marker([lat, lng], { 
-      icon: MARKER_ICONS[marker.type] || MARKER_ICONS.default,
-      zIndexOffset: 1000,
-      autoPan: false
-    }).addTo(markerGroup.value);
+      newMarkers.forEach(marker => {
+        currentIds.add(marker.id)
+        
+        // Skip if coordinates are invalid
+        const lat = parseFloat(marker.lat || marker.latitude)
+        const lng = parseFloat(marker.lng || marker.longitude)
+        if (isNaN(lat) || isNaN(lng)) return
 
-    const popupContent = document.createElement('div');
-    popupContent.className = 'marker-popup';
-    popupContent.innerHTML = `
-      ${marker.images?.length > 0 ? `
-        <div class="popup-image">
-          <img src="${marker.images[0]}" alt="${marker.name}" />
-        </div>` : ''}
-      <h3>${marker.name || 'Unnamed Place'}</h3>
-      <button class="view-details-btn">View Details</button>
-    `;
+        const existingMarker = markersMap.value.get(marker.id)
+        
+        if (existingMarker) {
+          // Update existing marker
+          existingMarker.setLatLng([lat, lng])
+          existingMarker.setIcon(MARKER_ICONS[marker.type] || MARKER_ICONS.default)
+        } else {
+          // Create new marker
+          const newMarker = createMarkerElement(marker)
+          newMarker.addTo(markerGroup.value)
+          markersMap.value.set(marker.id, newMarker)
+        }
+      })
 
-    markerElement.bindPopup(popupContent);
-
-    popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
-      window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
-    });
-
-    markerElement.on('click', () => {
-      setMapView([lat, lng]);
-    });
-
-    markersRef.value.set(marker.id, markerElement);
-  });
-}, { deep: true });
+      // Remove markers that no longer exist
+      for (const [id, marker] of markersMap.value.entries()) {
+        if (!currentIds.has(id)) {
+          markerGroup.value.removeLayer(marker)
+          markersMap.value.delete(id)
+        }
+      }
+    }, { deep: true })
 
     const getCurrentLocation = () => {
       if (!navigator.geolocation) {
@@ -223,19 +252,20 @@ watch(() => props.markers, (newMarkers) => {
         (pos) => {
           const { latitude, longitude } = pos.coords
           const latlng = L.latLng(latitude, longitude)
-          
+
           if (userLocationMarker.value) {
-            userLocationMarker.value.remove()
+            markerGroup.value.removeLayer(userLocationMarker.value)
           }
-          
+
           userLocationMarker.value = L.circleMarker(latlng, {
             radius: 8,
             fillColor: '#4CAF50',
             color: '#fff',
             weight: 2,
+            opacity: 1,
             fillOpacity: 0.8
           }).addTo(markerGroup.value)
-          
+
           setMapView(latlng)
         },
         (err) => emit('location-error', err.message)
@@ -245,7 +275,7 @@ watch(() => props.markers, (newMarkers) => {
     const toggleAddMode = () => {
       emit('toggle-add-mode', !props.isAddingMode)
       if (tempMarker.value) {
-        tempMarker.value.remove()
+        markerGroup.value.removeLayer(tempMarker.value)
         tempMarker.value = null
       }
     }
@@ -285,8 +315,6 @@ watch(() => props.markers, (newMarkers) => {
   position: absolute;
   left: 0;
   top: 0;
-  margin: 0;
-  padding: 0;
 }
 
 .map-heading {
@@ -302,41 +330,31 @@ watch(() => props.markers, (newMarkers) => {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+:deep(.custom-marker) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  background: none;
+  border: none;
+  text-align: center;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+}
+
 :deep(.custom-popup) {
-  min-width: 150px;
-  margin-bottom: 15px !important;
+  min-width: 200px;
 }
 
 :deep(.marker-popup) {
   text-align: center;
-  padding: 5px !important;
-}
-
-:deep(.marker-popup h3) {
-  margin: 0 0 8px 0;
-  font-weight: bold;
-}
-
-:deep(.view-details-btn) {
-  background: #4CAF50;
-  color: white !important;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-:deep(.view-details-btn:hover) {
-  background: #45a049;
+  padding: 10px;
 }
 
 :deep(.popup-image) {
   width: 100%;
   height: 120px;
+  margin: -10px -10px 10px -10px;
   overflow: hidden;
-  margin-bottom: 8px;
-  border-radius: 4px;
 }
 
 :deep(.popup-image img) {
@@ -345,91 +363,34 @@ watch(() => props.markers, (newMarkers) => {
   object-fit: cover;
 }
 
+:deep(.view-details-btn) {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-top: 8px;
+}
 
-:deep(.marker-icon) {
-  font-size: 24px !important;
-  line-height: 1 !important;
-  pointer-events: auto !important;
-  filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.3)) !important;
+:deep(.view-details-btn:hover) {
+  background: #45a049;
 }
 
 :deep(.leaflet-popup-content-wrapper) {
-  border-radius: 8px !important;
-  box-shadow: 0 3px 6px rgba(0,0,0,0.16) !important;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 8px;
 }
 
-:deep(.leaflet-popup-tip) {
-  box-shadow: 0 3px 6px rgba(0,0,0,0.16) !important;
+:deep(.leaflet-popup-content) {
+  margin: 0;
+  width: 250px !important;
 }
 
 :deep(.leaflet-control-container),
-:deep(.leaflet-control-attribution),
-:deep(.leaflet-control-container .leaflet-bottom),
-:deep(.leaflet-bar),
-:deep(.leaflet-control) {
-  display: none !important;
+:deep(.leaflet-control-attribution) {
+  display: none;
 }
-  :deep(.custom-popup .leaflet-popup-content-wrapper) {
-  padding: 0 !important;
-  overflow: hidden !important;
-}
-
-:deep(.custom-popup .leaflet-popup-content) {
-  margin: 0 !important;
-  width: 250px !important; /* Increased width */
-}
-
-:deep(.marker-popup) {
-  text-align: center;
-}
-
-:deep(.marker-popup h3) {
-  margin: 10px 0;
-  padding: 0 10px;
-}
-
-:deep(.view-details-btn) {
-  margin: 10px;
-  width: calc(100% - 20px);
-}
-:deep(.leaflet-marker-pane) {
-  will-change: transform !important;
-}
-
-:deep(.custom-marker-wrapper) {
-  position: absolute !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 32px !important;
-  height: 32px !important;
-  background: none !important;
-  border: none !important;
-  pointer-events: none !important;
-  transform-origin: bottom center !important;
-  will-change: transform !important;
-  z-index: 1000 !important;
-}
-
-:deep(.leaflet-zoom-animated) {
-  will-change: transform !important;
-  transform-origin: center !important;
-}
-:deep(.leaflet-marker-icon) {
-  transform-origin: bottom center !important;
-}
-
-:deep(.leaflet-marker-pane) {
-  z-index: 600 !important;
-  will-change: transform !important;
-}
-
-:deep(.leaflet-popup-pane) {
-  z-index: 610 !important;
-}
-
-:deep(.leaflet-map-pane canvas) {
-  z-index: 1 !important;
-}
-
 </style>
