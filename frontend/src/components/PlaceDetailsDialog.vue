@@ -244,45 +244,44 @@ const formattedLastEdited = computed(() => {
   }
 });
 
+// In PlaceDetailsDialog.vue, updated handleVote function:
+
 const handleVote = async (direction) => {
   if (!user.value) {
     alert('Please login to vote');
     return;
   }
 
-  const voteValue = direction === 'up' ? 1 : -1;
-
   try {
-    // First get the current place data
+    // Get current place data with votes and voted_users
     const { data: currentPlace } = await supabase
       .from('places')
       .select('votes, voted_users')
       .eq('id', editedPlace.id)
       .single();
 
-    if (!currentPlace) {
-      throw new Error('Place not found');
-    }
+    if (!currentPlace) throw new Error('Place not found');
 
-    // Initialize arrays if they don't exist
+    // Initialize voted_users array if it doesn't exist
     const votedUsers = currentPlace.voted_users || [];
-    
+
     // Check if user already voted
     if (votedUsers.includes(user.value.id)) {
       alert('You have already voted on this place');
       return;
     }
 
-    // Calculate new vote count
+    // Calculate new vote
+    const voteValue = direction === 'up' ? 1 : -1;
     const newVoteCount = (currentPlace.votes || 0) + voteValue;
-    
-    // Add user to voted users
+
+    // Add user to voted_users array
     votedUsers.push(user.value.id);
 
-    // Update the place with new vote count and voted users
+    // Update both vote count and voted_users
     const { error: updateError } = await supabase
       .from('places')
-      .update({
+      .update({ 
         votes: newVoteCount,
         voted_users: votedUsers
       })
@@ -295,15 +294,14 @@ const handleVote = async (direction) => {
     editedPlace.voted_users = votedUsers;
     hasVoted.value = true;
 
-    // Emit update event
+    // Emit update
     emit('update', { ...editedPlace });
 
   } catch (error) {
     console.error('Vote error:', error);
-    alert('Failed to save vote. Please try again.');
+    alert('Failed to save vote');
   }
 };
-
     const handleDelete = async () => {
       if (!user.value) {
         alert('Please login to delete')
