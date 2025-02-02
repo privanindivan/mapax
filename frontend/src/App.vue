@@ -121,59 +121,13 @@ export default {
     const showAuthModal = ref(false);
     const mapRef = ref(null);
     const selectedCategory = ref(null);
- 
 
-  const handleMapError = () => {
-    if (mapRef.value) {
-      console.log('Forcing map refresh...')
-      mapRef.value.forceRefresh()
-    }
-  }
-
-  // Add error handler to updatePlace
-  const updatePlace = async (updatedPlace) => {
-    try {
-      // Update local state immediately
-      const index = markers.value.findIndex(p => p.id === updatedPlace.id)
-      if (index !== -1) {
-        markers.value = markers.value.map(marker => 
-          marker.id === updatedPlace.id ? {
-            ...marker,
-            ...updatedPlace,
-            lat: updatedPlace.latitude || updatedPlace.lat,
-            lng: updatedPlace.longitude || updatedPlace.lng,
-            type: updatedPlace.type,
-            images: updatedPlace.images,
-            votes: updatedPlace.votes,
-            voted_users: updatedPlace.voted_users
-          } : marker
-        )
+    const handleMapError = () => {
+      if (mapRef.value) {
+        console.log('Forcing map refresh...');
+        mapRef.value.forceRefresh();
       }
-
-      // Ensure changes persist
-      await loadPlaces()
-      
-      // Force map refresh after update
-      handleMapError()
-    } catch (error) {
-      console.error('Update error:', error)
-      handleMapError() // Try to recover from error
-      await loadPlaces() // Fallback to reload
-    }
-  }
-    const sortedPlaces = computed(() => {
-      return [...markers.value]
-        .filter(m => !selectedCategory.value || m.type === selectedCategory.value)
-        .sort((a, b) => (b.votes || 0) - (a.votes || 0))
-        .map((place, index) => ({
-          ...place,
-          rank: index + 1
-        }));
-    });
-
-    const canDeletePlace = computed(() => {
-      return selectedMarker.value?.user_id === user.value?.id;
-    });
+    };
 
     const loadPlaces = async () => {
       try {
@@ -202,6 +156,50 @@ export default {
       } catch (error) {
         console.error('Load error:', error);
         markers.value = [];
+      }
+    };
+
+    const updatePlace = async (updatedPlace) => {
+      try {
+        // Update local state immediately
+        const index = markers.value.findIndex(p => p.id === updatedPlace.id);
+        if (index !== -1) {
+          markers.value = markers.value.map(marker => 
+            marker.id === updatedPlace.id ? {
+              ...marker,
+              ...updatedPlace,
+              lat: updatedPlace.latitude || updatedPlace.lat,
+              lng: updatedPlace.longitude || updatedPlace.lng,
+              type: updatedPlace.type,
+              images: updatedPlace.images,
+              votes: updatedPlace.votes,
+              voted_users: updatedPlace.voted_users
+            } : marker
+          );
+        }
+
+        // Ensure changes persist
+        await loadPlaces();
+        
+        // Force map refresh after update
+        handleMapError();
+      } catch (error) {
+        console.error('Update error:', error);
+        handleMapError(); // Try to recover from error
+        await loadPlaces(); // Fallback to reload
+      }
+    };
+
+    const handleDelete = async (id) => {
+      try {
+        markers.value = markers.value.filter(p => p.id !== id);
+        selectedMarker.value = null;
+        await loadPlaces();
+        handleMapError(); // Force refresh after delete
+      } catch (error) {
+        console.error('Delete error:', error);
+        alert('Failed to delete place');
+        handleMapError(); // Try to recover from error
       }
     };
 
@@ -253,17 +251,7 @@ export default {
       }
     };
 
-    const handleDelete = async (id) => {
-      try {
-        markers.value = markers.value.filter(p => p.id !== id);
-        selectedMarker.value = null;
-        await loadPlaces();
-      } catch (error) {
-        console.error('Delete error:', error);
-        alert('Failed to delete place');
-        handleMapError();
-      }
-    };
+
 
     const selectMarker = (id) => {
       selectedMarker.value = markers.value.find(m => m.id === id);
@@ -309,8 +297,20 @@ export default {
       await loadPlaces();
     });
 
-    return {
-    handleMapError,
+const sortedPlaces = computed(() => {
+  return [...markers.value]
+    .filter(m => !selectedCategory.value || m.type === selectedCategory.value)
+    .sort((a, b) => (b.votes || 0) - (a.votes || 0))
+    .map((place, index) => ({
+      ...place,
+      rank: index + 1
+    }));
+});
+
+const canDeletePlace = computed(() => {
+  return selectedMarker.value?.user_id === user.value?.id;
+});
+   return {
       markers,
       selectedMarker,
       sortedPlaces,
@@ -332,7 +332,8 @@ export default {
       handleLocationError: (err) => alert(err),
       toggleRanking: () => showRanking.value = !showRanking.value,
       toggleAddMode: (val) => isAddingMode.value = val,
-      closeDialog: () => selectedMarker.value = null
+      closeDialog: () => selectedMarker.value = null,
+      handleMapError
     };
   }
 };
