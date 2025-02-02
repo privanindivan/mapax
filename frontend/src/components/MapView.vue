@@ -196,17 +196,7 @@ onBeforeUnmount(() => {
 });
 
 // Add to the watch function
-watch(() => props.markers, (newMarkers) => {
-  // ... existing watch code ...
-  
-  // Add error handling
-  try {
-    // Your existing marker update code
-  } catch (err) {
-    console.error('Marker update error:', err);
-    handleMapError();
-  }
-}, { deep: true });
+
 
 // Add a public method to force refresh
 const forceRefresh = () => {
