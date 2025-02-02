@@ -158,36 +158,29 @@ const handleMapError = () => {
   }
 };
 
-    const updatePlace = async (updatedPlace) => {
-      try {
-        // Update local state immediately
-        const index = markers.value.findIndex(p => p.id === updatedPlace.id);
-        if (index !== -1) {
-          markers.value = markers.value.map(marker => 
-            marker.id === updatedPlace.id ? {
-              ...marker,
-              ...updatedPlace,
-              lat: updatedPlace.latitude || updatedPlace.lat,
-              lng: updatedPlace.longitude || updatedPlace.lng,
-              type: updatedPlace.type,
-              images: updatedPlace.images,
-              votes: updatedPlace.votes,
-              voted_users: updatedPlace.voted_users
-            } : marker
-          );
-        }
+const updatePlace = async (updatedPlace) => {
+  try {
+    const index = markers.value.findIndex(p => p.id === updatedPlace.id);
+    if (index !== -1) {
+      // Update local state
+      markers.value = markers.value.map(marker => 
+        marker.id === updatedPlace.id ? {
+          ...marker,
+          ...updatedPlace,
+          votes: updatedPlace.votes,
+          voted_users: updatedPlace.voted_users
+        } : marker
+      );
+    }
 
-        // Ensure changes persist
-        await loadPlaces();
-        
-        // Force map refresh after update
-        handleMapError();
-      } catch (error) {
-        console.error('Update error:', error);
-        handleMapError(); // Try to recover from error
-        await loadPlaces(); // Fallback to reload
-      }
-    };
+    // Reload all places to ensure consistency
+    await loadPlaces();
+    
+  } catch (error) {
+    console.error('Update error:', error);
+    await loadPlaces(); // Fallback to reload
+  }
+};
 
     const handleDelete = async (id) => {
       try {
