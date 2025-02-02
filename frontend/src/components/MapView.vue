@@ -169,6 +169,9 @@ export default {
 watch(() => props.markers, (newMarkers) => {
   if (!map.value || !markerGroup.value) return;
   
+  // Track processed markers to handle cleanup
+  const processedMarkers = new Set();
+  
   newMarkers.forEach(marker => {
     const lat = parseFloat(marker.lat || marker.latitude);
     const lng = parseFloat(marker.lng || marker.longitude);
@@ -180,52 +183,53 @@ watch(() => props.markers, (newMarkers) => {
 
     const latlng = L.latLng(lat, lng);
     const existingMarker = markersRef.value.get(marker.id);
+    
+    // Add to processed set
+    processedMarkers.add(marker.id);
 
-    // Update or create marker
     if (existingMarker) {
-      // Update marker position if needed
-      if (!existingMarker.getLatLng().equals(latlng)) {
-        existingMarker.setLatLng(latlng);
-      }
-      // Update icon if type changed
+      // Update existing marker
+      existingMarker.setLatLng(latlng);
+      
       if (existingMarker.options.icon !== MARKER_ICONS[marker.type]) {
         existingMarker.setIcon(MARKER_ICONS[marker.type] || MARKER_ICONS.default);
       }
-      // Update popup content
-      const popupContent = document.createElement('div');
-      popupContent.className = 'marker-popup';
-      popupContent.innerHTML = `
-        ${marker.images?.length > 0 ? `
-          <div class="popup-image">
-            <img src="${marker.images[0]}" alt="${marker.name}" />
-          </div>` : ''}
-        <h3>${marker.name || 'Unnamed Place'}</h3>
-        <button class="view-details-btn">
-          View Details
-        </button>
-      `;
-      
-      const popup = L.popup({
-        closeButton: false,
-        className: 'custom-popup',
-        offset: L.point(0, -32)
-      }).setContent(popupContent);
-      
-      existingMarker.bindPopup(popup);
 
-      // Add click handler
-      popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
-        window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
-      });
+      // Update popup without recreating it if popup exists
+      const popup = existingMarker.getPopup();
+      if (popup) {
+        const popupContent = document.createElement('div');
+        popupContent.className = 'marker-popup';
+        popupContent.innerHTML = `
+          ${marker.images?.length > 0 ? `
+            <div class="popup-image">
+              <img src="${marker.images[0]}" alt="${marker.name}" />
+            </div>` : ''}
+          <h3>${marker.name || 'Unnamed Place'}</h3>
+          <button class="view-details-btn">
+            View Details
+          </button>
+        `;
+        
+        const viewDetailsBtn = popupContent.querySelector('.view-details-btn');
+        if (viewDetailsBtn) {
+          viewDetailsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
+          });
+        }
+        
+        popup.setContent(popupContent);
+      }
     } else {
       // Create new marker
       const markerElement = L.marker(latlng, { 
         icon: MARKER_ICONS[marker.type] || MARKER_ICONS.default,
         riseOnHover: true,
-        zIndexOffset: 1000,
-        permanent: true
+        zIndexOffset: marker.id // Use ID for consistent z-index
       }).addTo(markerGroup.value);
 
+      // Add popup
       const popupContent = document.createElement('div');
       popupContent.className = 'marker-popup';
       popupContent.innerHTML = `
@@ -247,9 +251,13 @@ watch(() => props.markers, (newMarkers) => {
 
       markerElement.bindPopup(popup);
 
-      popupContent.querySelector('.view-details-btn').addEventListener('click', () => {
-        window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
-      });
+      const viewDetailsBtn = popupContent.querySelector('.view-details-btn');
+      if (viewDetailsBtn) {
+        viewDetailsBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          window.dispatchEvent(new CustomEvent('viewDetails', { detail: marker.id }));
+        });
+      }
 
       markerElement.on('click', () => {
         setMapView(latlng);
@@ -258,6 +266,15 @@ watch(() => props.markers, (newMarkers) => {
       markersRef.value.set(marker.id, markerElement);
     }
   });
+
+  // Clean up removed markers
+  markersRef.value.forEach((marker, id) => {
+    if (!processedMarkers.has(id)) {
+      markerGroup.value.removeLayer(marker);
+      markersRef.value.delete(id);
+    }
+  });
+}, { deep: true });
 
   // Remove markers that no longer exist
   const currentIds = new Set(newMarkers.map(m => m.id));
