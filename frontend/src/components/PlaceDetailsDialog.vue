@@ -233,12 +233,16 @@ export default {
       }
     })
 
-    const formattedLastEdited = computed(() => {
-      if (!editedPlace.last_edited) return 'Not edited'
-      const date = new Date(editedPlace.last_edited)
-      if (isNaN(date.getTime())) return 'Not edited'
-      return date.toLocaleString()
-    })
+const formattedLastEdited = computed(() => {
+  if (!editedPlace.last_edited) return 'Not edited';
+  try {
+    const date = new Date(editedPlace.last_edited);
+    if (isNaN(date.getTime())) return 'Not edited';
+    return date.toLocaleDateString(); // This will show only the date without time
+  } catch {
+    return 'Not edited';
+  }
+});
 
     const handleVote = async (direction) => {
   if (!user.value) {
