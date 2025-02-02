@@ -160,25 +160,45 @@ const handleMapError = () => {
 
 const updatePlace = async (updatedPlace) => {
   try {
+    // Update local state first
     const index = markers.value.findIndex(p => p.id === updatedPlace.id);
     if (index !== -1) {
-      // Update local state
       markers.value = markers.value.map(marker => 
         marker.id === updatedPlace.id ? {
           ...marker,
           ...updatedPlace,
+          lat: updatedPlace.latitude || updatedPlace.lat,
+          lng: updatedPlace.longitude || updatedPlace.lng,
           votes: updatedPlace.votes,
           voted_users: updatedPlace.voted_users
         } : marker
       );
     }
 
-    // Reload all places to ensure consistency
-    await loadPlaces();
-    
+    // Get fresh data from server
+    const { data: freshData, error } = await supabase
+      .from('places')
+      .select('*')
+      .eq('id', updatedPlace.id)
+      .single();
+
+    if (error) throw error;
+
+    // Update with fresh data
+    markers.value = markers.value.map(marker => 
+      marker.id === updatedPlace.id ? {
+        ...marker,
+        ...freshData,
+        lat: freshData.latitude,
+        lng: freshData.longitude,
+        votes: freshData.votes,
+        voted_users: freshData.voted_users
+      } : marker
+    );
+
   } catch (error) {
     console.error('Update error:', error);
-    await loadPlaces(); // Fallback to reload
+    await loadPlaces(); // Fallback to full refresh
   }
 };
 
