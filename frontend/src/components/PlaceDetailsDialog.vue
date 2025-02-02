@@ -232,7 +232,47 @@ export default {
         hasVoted.value = editedPlace.voted_users.includes(user.value.id)
       }
     })
+const toggleEdit = async () => {
+  if (!user.value) {
+    alert('Please login to edit');
+    return;
+  }
 
+  if (isEditing.value) {
+    try {
+      if (editedPlace.user_id !== user.value.id) {
+        throw new Error('Only the creator can edit this place');
+      }
+
+      const updates = {
+        name: editedPlace.name,
+        description: editedPlace.description,
+        type: editedPlace.type,
+        last_edited: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('places')
+        .update(updates)
+        .eq('id', editedPlace.id)
+        .eq('user_id', user.value.id);
+
+      if (error) throw error;
+
+      emit('update', { ...editedPlace, ...updates });
+      isEditing.value = false;
+    } catch (error) {
+      console.error('Edit error:', error);
+      alert('Failed to save changes. Only the creator can edit.');
+    }
+  } else {
+    if (editedPlace.user_id !== user.value.id) {
+      alert('Only the creator can edit this place');
+      return;
+    }
+    isEditing.value = true;
+  }
+};
 const formattedLastEdited = computed(() => {
   if (!editedPlace.last_edited) return 'Not edited';
   try {
