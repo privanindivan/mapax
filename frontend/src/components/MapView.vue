@@ -98,110 +98,52 @@ export default {
     isAddingMode: { type: Boolean, default: false }
   },
   emits: ['marker-click', 'map-click', 'toggle-add-mode', 'location-error'],
-  
-  setup(props, { emit }) {
+setup(props, { emit }) {
     const map = ref(null)
     const markerGroup = ref(null)
     const userLocationMarker = ref(null)
     const tempMarker = ref(null)
     const markersMap = ref(new Map())
-let errorCount = 0;
-const MAX_ERRORS = 3;
-const ERROR_RESET_INTERVAL = 10000; // 10 seconds
+    let errorCount = 0
+    const MAX_ERRORS = 3
+    const ERROR_RESET_INTERVAL = 10000
 
-const handleMapError = () => {
-  errorCount++;
-  
-  // If we've seen multiple errors in a short time, refresh the map
-  if (errorCount >= MAX_ERRORS) {
-    console.log('Multiple errors detected, refreshing map...');
-    refreshMap();
-    errorCount = 0;
-  }
-
-  // Reset error count after interval
-  setTimeout(() => {
-    errorCount = Math.max(0, errorCount - 1);
-  }, ERROR_RESET_INTERVAL);
-};
-
-const refreshMap = () => {
-  if (!map.value) return;
-
-  // Clear all existing layers
-  markerGroup.value.clearLayers();
-  markersMap.value.clear();
-
-  // Reset the map view
-  map.value.setView(map.value.getCenter(), map.value.getZoom(), {
-    animate: false
-  });
-
-  // Re-add all markers
-  props.markers.forEach(marker => {
-    const lat = parseFloat(marker.lat || marker.latitude);
-    const lng = parseFloat(marker.lng || marker.longitude);
-    
-    if (isNaN(lat) || isNaN(lng)) return;
-
-    try {
-      const markerElement = createMarkerElement(marker);
-      markerElement.addTo(markerGroup.value);
-      markersMap.value.set(marker.id, markerElement);
-    } catch (err) {
-      console.error('Error adding marker:', err);
+    const handleMapError = () => {
+      errorCount++
+      if (errorCount >= MAX_ERRORS) {
+        console.log('Multiple errors detected, refreshing map...')
+        refreshMap()
+        errorCount = 0
+      }
+      setTimeout(() => {
+        errorCount = Math.max(0, errorCount - 1)
+      }, ERROR_RESET_INTERVAL)
     }
-  });
-};
 
-// Add error event listeners in onMounted
-onMounted(() => {
-  // ... existing onMounted code ...
+    const refreshMap = () => {
+      if (!map.value) return
+      try {
+        markerGroup.value.clearLayers()
+        markersMap.value.clear()
 
-  // Add error handlers
-  map.value.on('error', handleMapError);
-  
-  // Handle popup errors
-  const originalOnAdd = L.Popup.prototype.onAdd;
-  L.Popup.prototype.onAdd = function(map) {
-    try {
-      return originalOnAdd.call(this, map);
-    } catch (err) {
-      console.error('Popup error:', err);
-      handleMapError();
-      return this;
+        props.markers.forEach(marker => {
+          try {
+            const lat = parseFloat(marker.lat || marker.latitude)
+            const lng = parseFloat(marker.lng || marker.longitude)
+            
+            if (isNaN(lat) || isNaN(lng)) return
+
+            const markerElement = createMarkerElement(marker)
+            markerElement.addTo(markerGroup.value)
+            markersMap.value.set(marker.id, markerElement)
+          } catch (err) {
+            console.error('Error adding marker:', err)
+          }
+        })
+      } catch (err) {
+        console.error('Error refreshing map:', err)
+      }
     }
-  };
-
-  // Handle zoom animation errors
-  const originalAnimateZoom = L.Popup.prototype._animateZoom;
-  L.Popup.prototype._animateZoom = function(center) {
-    try {
-      return originalAnimateZoom.call(this, center);
-    } catch (err) {
-      console.error('Zoom animation error:', err);
-      handleMapError();
-      return this;
-    }
-  };
-});
-
-// Clean up in onBeforeUnmount
-onBeforeUnmount(() => {
-  // ... existing cleanup code ...
-  
-  if (map.value) {
-    map.value.off('error', handleMapError);
-  }
-});
-
-// Add to the watch function
-
-
-// Add a public method to force refresh
-const forceRefresh = () => {
-  refreshMap();
-};
 
     const setMapView = (latlng, zoom = 18) => {
       if (map.value) {
@@ -250,8 +192,7 @@ const forceRefresh = () => {
 
       return markerElement
     }
-
-    const handleViewDetails = (e) => {
+const handleViewDetails = (e) => {
       const marker = markersMap.value.get(e.detail)
       if (marker) {
         marker.openPopup()
@@ -260,7 +201,6 @@ const forceRefresh = () => {
     }
 
     onMounted(() => {
-      // Initialize map
       map.value = L.map('map', {
         center: GMA_COORDINATES,
         zoom: 16,
@@ -272,7 +212,6 @@ const forceRefresh = () => {
         preferCanvas: true
       })
 
-      // Add tile layer
       L.tileLayer('https://tile.thunderforest.com/neighbourhood/{z}/{x}/{y}.png?apikey=375c923e2b8447249e6774bc2d2f3fa2', {
         attribution: '',
         minZoom: 15,
@@ -280,10 +219,22 @@ const forceRefresh = () => {
       }).addTo(map.value)
 
       markerGroup.value = L.featureGroup().addTo(map.value)
-
       window.addEventListener('viewDetails', handleViewDetails)
 
-      // Handle map clicks
+      map.value.on('zoomend', () => {
+        setTimeout(() => {
+          if (document.querySelectorAll('.leaflet-marker-icon').length !== props.markers.length) {
+            handleMapError()
+          }
+        }, 1000)
+      })
+
+      setInterval(() => {
+        refreshMap()
+      }, 30000)
+
+      setTimeout(refreshMap, 1000)
+
       map.value.on('click', (e) => {
         if (props.isAddingMode) {
           const latlng = e.latlng
@@ -301,42 +252,8 @@ const forceRefresh = () => {
       })
     })
 
-    // Watch for marker changes
-    watch(() => props.markers, (newMarkers) => {
-      if (!map.value || !markerGroup.value) return
-
-      // Keep track of current marker IDs
-      const currentIds = new Set()
-
-      newMarkers.forEach(marker => {
-        currentIds.add(marker.id)
-        
-        // Skip if coordinates are invalid
-        const lat = parseFloat(marker.lat || marker.latitude)
-        const lng = parseFloat(marker.lng || marker.longitude)
-        if (isNaN(lat) || isNaN(lng)) return
-
-        const existingMarker = markersMap.value.get(marker.id)
-        
-        if (existingMarker) {
-          // Update existing marker
-          existingMarker.setLatLng([lat, lng])
-          existingMarker.setIcon(MARKER_ICONS[marker.type] || MARKER_ICONS.default)
-        } else {
-          // Create new marker
-          const newMarker = createMarkerElement(marker)
-          newMarker.addTo(markerGroup.value)
-          markersMap.value.set(marker.id, newMarker)
-        }
-      })
-
-      // Remove markers that no longer exist
-      for (const [id, marker] of markersMap.value.entries()) {
-        if (!currentIds.has(id)) {
-          markerGroup.value.removeLayer(marker)
-          markersMap.value.delete(id)
-        }
-      }
+    watch(() => props.markers, () => {
+      refreshMap()
     }, { deep: true })
 
     const getCurrentLocation = () => {
@@ -388,12 +305,10 @@ const forceRefresh = () => {
       getCurrentLocation,
       toggleAddMode,
       setMapView,
-forceRefresh 
+      refreshMap
     }
   }
 }
-</script>
-
 <style scoped>
 .map-wrapper {
   position: fixed;
