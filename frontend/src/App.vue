@@ -166,31 +166,33 @@ export default {
       }
     };
 
-    const updatePlace = async (updatedPlace) => {
-      try {
-        const index = markers.value.findIndex(p => p.id === updatedPlace.id);
-        if (index !== -1) {
-          markers.value = [
-            ...markers.value.slice(0, index),
-            {
-              ...markers.value[index],
-              ...updatedPlace,
-              lat: updatedPlace.latitude || updatedPlace.lat,
-              lng: updatedPlace.longitude || updatedPlace.lng,
-              type: updatedPlace.type,
+  const updatePlace = async (updatedPlace) => {
+  try {
+    // Update local state immediately
+    const index = markers.value.findIndex(p => p.id === updatedPlace.id);
+    if (index !== -1) {
+      // Create new array to force reactivity
+      markers.value = markers.value.map(marker => 
+        marker.id === updatedPlace.id ? {
+          ...marker,
+          ...updatedPlace,
+          lat: updatedPlace.latitude || updatedPlace.lat,
+          lng: updatedPlace.longitude || updatedPlace.lng,
+          type: updatedPlace.type,
           images: updatedPlace.images,
           votes: updatedPlace.votes,
           voted_users: updatedPlace.voted_users
-            },
-            ...markers.value.slice(index + 1)
-          ];
-        }
-      } catch (error) {
-        console.error('Update error:', error);
-        alert('Failed to update place');
-        await loadPlaces();
-      }
-    };
+        } : marker
+      );
+    }
+
+    // Ensure changes persist
+    await loadPlaces();
+  } catch (error) {
+    console.error('Update error:', error);
+    await loadPlaces(); // Fallback to reload
+  }
+};
 
     const handleMapClick = async (latlng) => {
       if (!user.value) {
