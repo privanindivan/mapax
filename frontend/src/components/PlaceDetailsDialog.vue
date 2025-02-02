@@ -357,46 +357,59 @@ const handleVote = async (direction) => {
   }
 
   try {
-    // First get current data
+    // First get fresh data
     const { data: place, error: fetchError } = await supabase
       .from('places')
-      .select('*')  // Get all fields to ensure we have complete data
+      .select('votes, voted_users')
       .eq('id', editedPlace.id)
       .single();
 
-    if (fetchError) {
-      console.error('Fetch error:', fetchError);
-      throw fetchError;
-    }
-
-    // Initialize arrays and values
+    if (fetchError) throw fetchError;
+    
     const votedUsers = Array.isArray(place.voted_users) ? place.voted_users : [];
-    const currentVotes = place.votes || 0;
+    const currentVotes = typeof place.votes === 'number' ? place.votes : 0;
 
-    // Check if already voted
     if (votedUsers.includes(user.value.id)) {
       alert('You have already voted on this place');
       return;
     }
 
-    // Calculate new vote
     const voteValue = direction === 'up' ? 1 : -1;
     const newVoteCount = currentVotes + voteValue;
 
-    // Perform update
-    const { error: updateError } = await supabase
+    // Only update votes and voted_users, nothing else
+    const { data: updateData, error: updateError } = await supabase
       .from('places')
       .update({
         votes: newVoteCount,
         voted_users: [...votedUsers, user.value.id]
       })
       .eq('id', editedPlace.id)
-      .select();  // Get updated data back
+      .select()
+      .single();
 
     if (updateError) {
-      console.error('Update error:', updateError);
+      console.error('Vote update failed:', updateError);
       throw updateError;
     }
+
+    // Update local state
+    editedPlace.votes = newVoteCount;
+    editedPlace.voted_users = [...votedUsers, user.value.id];
+    hasVoted.value = true;
+
+    // Emit update with the new data
+    emit('update', {
+      ...editedPlace,
+      votes: newVoteCount,
+      voted_users: [...votedUsers, user.value.id]
+    });
+
+  } catch (error) {
+    console.error('Vote error:', error);
+    alert('Failed to save vote. Please try again.');
+  }
+};
 
     // Update local state
     editedPlace.votes = newVoteCount;
