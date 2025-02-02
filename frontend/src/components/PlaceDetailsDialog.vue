@@ -350,54 +350,14 @@ const handleImageUpload = async (event) => {
   }
 };
 
-async handleVotes(voteType) {
-  // Quick null checks to prevent reading 'content' of null
-  if (!this.place || !this.place.content) {
-    console.error("Error: Place data or content is missing.");
-    return;
-  }
-
-  // Ensure voted_users exists as an array
-  if (!Array.isArray(this.place.voted_users)) {
-    this.place.voted_users = [];
-  }
-
-  // Prevent duplicate voting (vote once per account)
-  if (this.place.voted_users.includes(this.userId)) {
-    console.log("You have already voted on this place.");
-    return;
-  }
-
-  // Determine vote change: +1 for upvote, -1 for downvote
-  const voteChange = voteType === 'upvote' ? 1 : -1;
-  const newVotes = this.place.votes + voteChange;
-  const newVotedUsers = [...this.place.voted_users, this.userId];
-
-  // Update Supabase: Ensure your Supabase client is available as this.$supabase
-  const { data, error } = await this.$supabase
-    .from('places')
-    .update({ votes: newVotes, voted_users: newVotedUsers })
-    .eq('id', this.place.id);
-
-  if (error) {
-    console.error("Error updating vote:", error);
-  } else {
-    console.log("Vote updated successfully", data);
-    // Optionally update local state
-    this.place.votes = newVotes;
-    this.place.voted_users = newVotedUsers;
-  }
-}
-
-
-  const handleVote = async (direction) => {
+const handleVote = async (direction) => {
   if (!user.value) {
     alert('Please login to vote');
     return;
   }
 
   try {
-    // Get fresh data from server
+    // First get fresh data
     const { data: place, error: fetchError } = await supabase
       .from('places')
       .select('votes, voted_users')
@@ -407,7 +367,7 @@ async handleVotes(voteType) {
     if (fetchError) throw fetchError;
     
     const votedUsers = Array.isArray(place.voted_users) ? place.voted_users : [];
-    const currentVotes = place.votes || 0;
+    const currentVotes = typeof place.votes === 'number' ? place.votes : 0;
 
     if (votedUsers.includes(user.value.id)) {
       alert('You have already voted on this place');
@@ -417,30 +377,58 @@ async handleVotes(voteType) {
     const voteValue = direction === 'up' ? 1 : -1;
     const newVoteCount = currentVotes + voteValue;
 
-    // Update database
-    const { error: updateError } = await supabase
+    // Only update votes and voted_users, nothing else
+    const { data: updateData, error: updateError } = await supabase
       .from('places')
       .update({
         votes: newVoteCount,
         voted_users: [...votedUsers, user.value.id]
       })
-      .eq('id', editedPlace.id);
+      .eq('id', editedPlace.id)
+      .select()
+      .single();
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('Vote update failed:', updateError);
+      throw updateError;
+    }
 
     // Update local state
     editedPlace.votes = newVoteCount;
     editedPlace.voted_users = [...votedUsers, user.value.id];
     hasVoted.value = true;
 
-    // Notify parent component
-    emit('update', editedPlace);
+    // Emit update with the new data
+    emit('update', {
+      ...editedPlace,
+      votes: newVoteCount,
+      voted_users: [...votedUsers, user.value.id]
+    });
 
   } catch (error) {
     console.error('Vote error:', error);
     alert('Failed to save vote. Please try again.');
   }
 };
+
+    // Update local state
+    editedPlace.votes = newVoteCount;
+    editedPlace.voted_users = [...votedUsers, user.value.id];
+    hasVoted.value = true;
+
+    // Emit update with complete data
+    emit('update', {
+      ...editedPlace,
+      votes: newVoteCount,
+      voted_users: [...votedUsers, user.value.id]
+    });
+
+  } catch (error) {
+    console.error('Vote error:', error);
+    alert('Failed to save vote. Please check console for details.');
+  }
+};
+  
     const removeImage = async (index) => {
       try {
         const updatedImages = [...(editedPlace.images || [])]
