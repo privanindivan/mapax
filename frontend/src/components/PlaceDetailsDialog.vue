@@ -388,17 +388,14 @@ const handleVote = async (direction) => {
       .select()
       .single();
 
-    if (updateError) {
-      console.error('Vote update failed:', updateError);
-      throw updateError;
-    }
+       if (updateError) throw updateError;
 
     // Update local state
     editedPlace.votes = newVoteCount;
     editedPlace.voted_users = [...votedUsers, user.value.id];
     hasVoted.value = true;
 
-    // Emit update with the new data
+    // Emit update
     emit('update', {
       ...editedPlace,
       votes: newVoteCount,
