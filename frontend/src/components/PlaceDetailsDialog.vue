@@ -167,7 +167,7 @@
             class="add-comment-button"
             :disabled="!newComment.trim() || !user"
           >
-            Post Comment
+            Comment
           </button>
 
           <div class="comments-list">
