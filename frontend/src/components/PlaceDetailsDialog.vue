@@ -159,7 +159,7 @@
           <textarea
             v-model="newComment"
             class="comment-input"
-            placeholder="Add a comment... (max 200 characters)"
+            placeholder="Comment... (max 200 characters)"
             rows="3"
           ></textarea>
           <button 
