@@ -357,60 +357,64 @@ const handleVote = async (direction) => {
   }
 
   try {
-    // Get current place data
-    const { data: currentPlace, error: fetchError } = await supabase
+    // First get current data
+    const { data: place, error: fetchError } = await supabase
       .from('places')
-      .select('votes, voted_users')
+      .select('*')  // Get all fields to ensure we have complete data
       .eq('id', editedPlace.id)
       .single();
 
-    if (fetchError) throw fetchError;
-    if (!currentPlace) throw new Error('Place not found');
+    if (fetchError) {
+      console.error('Fetch error:', fetchError);
+      throw fetchError;
+    }
 
-    // Initialize voted_users as empty array if null
-    const votedUsers = currentPlace.voted_users || [];
+    // Initialize arrays and values
+    const votedUsers = Array.isArray(place.voted_users) ? place.voted_users : [];
+    const currentVotes = place.votes || 0;
 
-    // Check if user already voted - user.value.id is UUID
+    // Check if already voted
     if (votedUsers.includes(user.value.id)) {
       alert('You have already voted on this place');
       return;
     }
 
-    // Calculate new vote using integer
+    // Calculate new vote
     const voteValue = direction === 'up' ? 1 : -1;
-    const newVoteCount = (currentPlace.votes || 0) + voteValue;
+    const newVoteCount = currentVotes + voteValue;
 
-    // Add user's UUID to voted_users array
-    const newVotedUsers = [...votedUsers, user.value.id];
-
-    // Update the place with integer vote and UUID array
+    // Perform update
     const { error: updateError } = await supabase
       .from('places')
       .update({
-        votes: newVoteCount, // integer
-        voted_users: newVotedUsers // uuid[]
+        votes: newVoteCount,
+        voted_users: [...votedUsers, user.value.id]
       })
-      .eq('id', editedPlace.id);
+      .eq('id', editedPlace.id)
+      .select();  // Get updated data back
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('Update error:', updateError);
+      throw updateError;
+    }
 
     // Update local state
     editedPlace.votes = newVoteCount;
-    editedPlace.voted_users = newVotedUsers;
+    editedPlace.voted_users = [...votedUsers, user.value.id];
     hasVoted.value = true;
 
+    // Emit update with complete data
     emit('update', {
       ...editedPlace,
       votes: newVoteCount,
-      voted_users: newVotedUsers
+      voted_users: [...votedUsers, user.value.id]
     });
 
   } catch (error) {
     console.error('Vote error:', error);
-    alert('Failed to save vote');
+    alert('Failed to save vote. Please check console for details.');
   }
 };
-
   
     const removeImage = async (index) => {
       try {
