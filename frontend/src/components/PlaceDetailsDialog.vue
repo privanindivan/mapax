@@ -411,49 +411,7 @@ const handleVote = async (direction) => {
   }
 };
 
-    // Calculate new vote
-    const voteValue = direction === 'up' ? 1 : -1;
-    const newVoteCount = (currentPlace.votes || 0) + voteValue;
-    const newVotedUsers = [...votedUsers, user.value.id];
-
-    console.log('Updating with:', {
-      votes: newVoteCount,
-      voted_users: newVotedUsers
-    });
-
-    // Update in database
-    const { error: updateError } = await supabase
-      .from('places')
-      .update({
-        votes: newVoteCount,
-        voted_users: newVotedUsers
-      })
-      .eq('id', editedPlace.id);
-
-    if (updateError) {
-      console.error('Update error:', updateError);
-      throw updateError;
-    }
-
-    // Update local state
-    editedPlace.votes = newVoteCount;
-    editedPlace.voted_users = newVotedUsers;
-    hasVoted.value = true;
-
-    // Force reload of places to ensure consistency
-    emit('update', {
-      ...editedPlace,
-      votes: newVoteCount,
-      voted_users: newVotedUsers
-    });
-
-    console.log('Vote successful');
-
-  } catch (error) {
-    console.error('Vote error:', error);
-    alert('Failed to save vote. Please try again.');
-  }
-};
+  
     const removeImage = async (index) => {
       try {
         const updatedImages = [...(editedPlace.images || [])]
