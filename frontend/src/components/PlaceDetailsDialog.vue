@@ -313,24 +313,23 @@ const handleDelete = async () => {
 }
 const handleVote = async (direction) => {
   if (!user.value) {
-    alert('Please login to vote');
-    return;
+    alert('Please login to vote')
+    return
   }
 
   try {
-    // First get current place votes
+    // First get current place votes and voted_users
     const { data: currentPlace } = await supabase
       .from('places')
       .select('votes, voted_users')
       .eq('id', editedPlace.id)
       .single();
 
-    if (!currentPlace) {
-      throw new Error('Place not found');
-    }
+    if (!currentPlace) throw new Error('Place not found');
 
-    // Initialize voted_users if doesn't exist
-    const votedUsers = currentPlace.voted_users || [];
+    const votedUsers = Array.isArray(currentPlace.voted_users) 
+      ? currentPlace.voted_users 
+      : [];
 
     // Check if user already voted
     if (votedUsers.includes(user.value.id)) {
@@ -338,16 +337,17 @@ const handleVote = async (direction) => {
       return;
     }
 
-    // Calculate new vote
+    // Calculate new vote count
     const voteValue = direction === 'up' ? 1 : -1;
     const newVoteCount = (currentPlace.votes || 0) + voteValue;
+    const newVotedUsers = [...votedUsers, user.value.id];
 
-    // Update both votes and voted_users
+    // Update the place
     const { error: updateError } = await supabase
       .from('places')
-      .update({ 
+      .update({
         votes: newVoteCount,
-        voted_users: [...votedUsers, user.value.id]
+        voted_users: newVotedUsers
       })
       .eq('id', editedPlace.id);
 
@@ -355,18 +355,17 @@ const handleVote = async (direction) => {
 
     // Update local state
     editedPlace.votes = newVoteCount;
-    editedPlace.voted_users = [...votedUsers, user.value.id];
+    editedPlace.voted_users = newVotedUsers;
     hasVoted.value = true;
 
-    // Emit update to refresh display
+    // Emit update event
     emit('update', { ...editedPlace });
 
   } catch (error) {
     console.error('Vote error:', error);
-    alert('Failed to save vote');
+    alert('Failed to save vote. Please try again.');
   }
 };
-
     const handleImageUpload = async (event) => {
       const file = event.target.files[0]
       if (!file) return
