@@ -105,6 +105,113 @@ export default {
     const userLocationMarker = ref(null)
     const tempMarker = ref(null)
     const markersMap = ref(new Map())
+let errorCount = 0;
+const MAX_ERRORS = 3;
+const ERROR_RESET_INTERVAL = 10000; // 10 seconds
+
+const handleMapError = () => {
+  errorCount++;
+  
+  // If we've seen multiple errors in a short time, refresh the map
+  if (errorCount >= MAX_ERRORS) {
+    console.log('Multiple errors detected, refreshing map...');
+    refreshMap();
+    errorCount = 0;
+  }
+
+  // Reset error count after interval
+  setTimeout(() => {
+    errorCount = Math.max(0, errorCount - 1);
+  }, ERROR_RESET_INTERVAL);
+};
+
+const refreshMap = () => {
+  if (!map.value) return;
+
+  // Clear all existing layers
+  markerGroup.value.clearLayers();
+  markersMap.value.clear();
+
+  // Reset the map view
+  map.value.setView(map.value.getCenter(), map.value.getZoom(), {
+    animate: false
+  });
+
+  // Re-add all markers
+  props.markers.forEach(marker => {
+    const lat = parseFloat(marker.lat || marker.latitude);
+    const lng = parseFloat(marker.lng || marker.longitude);
+    
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    try {
+      const markerElement = createMarkerElement(marker);
+      markerElement.addTo(markerGroup.value);
+      markersMap.value.set(marker.id, markerElement);
+    } catch (err) {
+      console.error('Error adding marker:', err);
+    }
+  });
+};
+
+// Add error event listeners in onMounted
+onMounted(() => {
+  // ... existing onMounted code ...
+
+  // Add error handlers
+  map.value.on('error', handleMapError);
+  
+  // Handle popup errors
+  const originalOnAdd = L.Popup.prototype.onAdd;
+  L.Popup.prototype.onAdd = function(map) {
+    try {
+      return originalOnAdd.call(this, map);
+    } catch (err) {
+      console.error('Popup error:', err);
+      handleMapError();
+      return this;
+    }
+  };
+
+  // Handle zoom animation errors
+  const originalAnimateZoom = L.Popup.prototype._animateZoom;
+  L.Popup.prototype._animateZoom = function(center) {
+    try {
+      return originalAnimateZoom.call(this, center);
+    } catch (err) {
+      console.error('Zoom animation error:', err);
+      handleMapError();
+      return this;
+    }
+  };
+});
+
+// Clean up in onBeforeUnmount
+onBeforeUnmount(() => {
+  // ... existing cleanup code ...
+  
+  if (map.value) {
+    map.value.off('error', handleMapError);
+  }
+});
+
+// Add to the watch function
+watch(() => props.markers, (newMarkers) => {
+  // ... existing watch code ...
+  
+  // Add error handling
+  try {
+    // Your existing marker update code
+  } catch (err) {
+    console.error('Marker update error:', err);
+    handleMapError();
+  }
+}, { deep: true });
+
+// Add a public method to force refresh
+const forceRefresh = () => {
+  refreshMap();
+};
 
     const setMapView = (latlng, zoom = 18) => {
       if (map.value) {
@@ -290,7 +397,8 @@ export default {
     return {
       getCurrentLocation,
       toggleAddMode,
-      setMapView
+      setMapView,
+forceRefresh 
     }
   }
 }
