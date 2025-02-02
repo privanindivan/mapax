@@ -284,8 +284,6 @@ const formattedLastEdited = computed(() => {
   }
 });
 
-// In PlaceDetailsDialog.vue, updated handleVote function:
-
 const handleVote = async (direction) => {
   if (!user.value) {
     alert('Please login to vote');
@@ -293,16 +291,18 @@ const handleVote = async (direction) => {
   }
 
   try {
-    // Get current place data with votes and voted_users
+    // First get current place votes
     const { data: currentPlace } = await supabase
       .from('places')
       .select('votes, voted_users')
       .eq('id', editedPlace.id)
       .single();
 
-    if (!currentPlace) throw new Error('Place not found');
+    if (!currentPlace) {
+      throw new Error('Place not found');
+    }
 
-    // Initialize voted_users array if it doesn't exist
+    // Initialize voted_users if doesn't exist
     const votedUsers = currentPlace.voted_users || [];
 
     // Check if user already voted
@@ -315,15 +315,12 @@ const handleVote = async (direction) => {
     const voteValue = direction === 'up' ? 1 : -1;
     const newVoteCount = (currentPlace.votes || 0) + voteValue;
 
-    // Add user to voted_users array
-    votedUsers.push(user.value.id);
-
-    // Update both vote count and voted_users
+    // Update both votes and voted_users
     const { error: updateError } = await supabase
       .from('places')
       .update({ 
         votes: newVoteCount,
-        voted_users: votedUsers
+        voted_users: [...votedUsers, user.value.id]
       })
       .eq('id', editedPlace.id);
 
@@ -331,10 +328,10 @@ const handleVote = async (direction) => {
 
     // Update local state
     editedPlace.votes = newVoteCount;
-    editedPlace.voted_users = votedUsers;
+    editedPlace.voted_users = [...votedUsers, user.value.id];
     hasVoted.value = true;
 
-    // Emit update
+    // Emit update to refresh display
     emit('update', { ...editedPlace });
 
   } catch (error) {
@@ -342,34 +339,6 @@ const handleVote = async (direction) => {
     alert('Failed to save vote');
   }
 };
-    const handleDelete = async () => {
-      if (!user.value) {
-        alert('Please login to delete')
-        return
-      }
-
-      if (editedPlace.user_id !== user.value.id) {
-        alert('Only the creator can delete this place')
-        return
-      }
-
-      if (!confirm('Are you sure you want to delete this place?')) return
-      
-      try {
-        const { error } = await supabase
-          .from('places')
-          .delete()
-          .eq('id', editedPlace.id)
-          .eq('user_id', user.value.id)
-
-        if (error) throw error
-        emit('delete', editedPlace.id)
-        emit('close')
-      } catch (error) {
-        console.error('Delete error:', error)
-        alert('Failed to delete place')
-      }
-    }
 
     const handleImageUpload = async (event) => {
       const file = event.target.files[0]
