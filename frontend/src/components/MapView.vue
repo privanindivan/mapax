@@ -276,16 +276,6 @@ watch(() => props.markers, (newMarkers) => {
   });
 }, { deep: true });
 
-  // Remove markers that no longer exist
-  const currentIds = new Set(newMarkers.map(m => m.id));
-  markersRef.value.forEach((marker, id) => {
-    if (!currentIds.has(id)) {
-      markerGroup.value.removeLayer(marker);
-      markersRef.value.delete(id);
-    }
-  });
-}, { deep: true });
-
     const getCurrentLocation = () => {
       if (!navigator.geolocation) {
         emit('location-error', 'Geolocation not supported')
