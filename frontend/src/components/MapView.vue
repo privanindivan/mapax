@@ -309,6 +309,7 @@ const handleViewDetails = (e) => {
     }
   }
 }
+</script>
 <style scoped>
 .map-wrapper {
   position: fixed;
