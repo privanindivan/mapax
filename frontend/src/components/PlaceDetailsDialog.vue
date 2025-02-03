@@ -357,48 +357,59 @@ const handleVote = async (direction) => {
   }
 
   try {
-    // First get fresh data
-    const { data: place, error: fetchError } = await supabase
+    // Get current place state
+    const { data: currentPlace, error: fetchError } = await supabase
       .from('places')
       .select('votes, voted_users')
       .eq('id', editedPlace.id)
       .single();
 
-    if (fetchError) throw fetchError;
-    
-    const votedUsers = Array.isArray(place.voted_users) ? place.voted_users : [];
-    const currentVotes = typeof place.votes === 'number' ? place.votes : 0;
+    if (fetchError) {
+      console.error('Fetch error:', fetchError);
+      throw fetchError;
+    }
 
+    // Initialize or get current votes and voted_users
+    const currentVotes = currentPlace.votes || 0;
+    const votedUsers = currentPlace.voted_users || [];
+
+    // Check if user already voted
     if (votedUsers.includes(user.value.id)) {
       alert('You have already voted on this place');
       return;
     }
 
+    // Calculate new vote
     const voteValue = direction === 'up' ? 1 : -1;
     const newVoteCount = currentVotes + voteValue;
 
-    // Only update votes and voted_users, nothing else
-    const { error: updateError } = await supabase
+    // Update in database with both changes
+    const { data: updated, error: updateError } = await supabase
       .from('places')
       .update({
         votes: newVoteCount,
         voted_users: [...votedUsers, user.value.id]
       })
-      .eq('id', editedPlace.id);
+      .eq('id', editedPlace.id)
+      .select()
+      .single();
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('Update error:', updateError);
+      throw updateError;
+    }
 
-    // Update local state
-    editedPlace.votes = newVoteCount;
-    editedPlace.voted_users = [...votedUsers, user.value.id];
+    // Update local state with server response
+    editedPlace.votes = updated.votes;
+    editedPlace.voted_users = updated.voted_users;
     hasVoted.value = true;
 
-    // Emit update
-    emit('update', editedPlace);
+    // Emit update with server data
+    emit('update', { ...editedPlace });
 
   } catch (error) {
     console.error('Vote error:', error);
-    alert('Failed to save vote');
+    alert('Failed to save vote. Please try again.');
   }
 };
   
