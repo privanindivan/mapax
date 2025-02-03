@@ -5,7 +5,7 @@
       :class="['ranking-button', { active: showRanking }]"
 style="z-index: 1000; padding: 8px 12px; font-size: 14px"
     >
-      ⬆️ Rankingss
+      ⬆️ Rankings
     </button>
     
     <UserMenu 
